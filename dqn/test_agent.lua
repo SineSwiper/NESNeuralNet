@@ -9,39 +9,7 @@ if not dqn then
     require "initenv"
 end
 
-local cmd = torch.CmdLine()
-cmd:text()
-cmd:text('Train Agent in Environment:')
-cmd:text()
-cmd:text('Options:')
-
-cmd:option('-framework', '', 'name of training framework')
-cmd:option('-env', '', 'name of environment to use')
-cmd:option('-game_path', '', 'path to environment file (ROM)')
-cmd:option('-env_params', '', 'string of environment parameters')
-cmd:option('-pool_frms', '',
-           'string of frame pooling parameters (e.g.: size=2,type="max")')
-cmd:option('-actrep', 1, 'how many times to repeat action')
-cmd:option('-gameOverPenalty', 0, 'penalty for the game ending')
-cmd:option('-random_starts', 0, 'play action 0 between 1 and random_starts ' ..
-           'number of times at the start of each training episode')
-
-cmd:option('-name', '', 'filename used for saving network and training history')
-cmd:option('-network', '', 'reload pretrained network')
-cmd:option('-agent', '', 'name of agent file to use')
-cmd:option('-agent_params', '', 'string of agent parameters')
-cmd:option('-seed', 1, 'fixed input seed for repeatable experiments')
-
-cmd:option('-verbose', 2,
-           'the higher the level, the more information is printed to screen')
-cmd:option('-threads', 1, 'number of BLAS threads')
-cmd:option('-gpu', -1, 'gpu flag')
-cmd:option('-gif_file', '', 'GIF path to write session screens')
-cmd:option('-csv_file', '', 'CSV path to write session data')
-
-cmd:text()
-
-local opt = cmd:parse(arg)
+local opt = globalDQNOptions
 
 --- General setup.
 local game_env, game_actions, agent, opt = setup(opt)
