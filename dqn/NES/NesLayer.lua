@@ -91,7 +91,7 @@ following keys:
  * `reward` - reward obtained
  * `data`   - observations
  * `pixels` - pixel space observations
- * `ram`    - ram of the ATARI if requested
+ * `ram`    - ram of the NES if requested
  * `terminal` - (bool), true if the new state is a terminal state
 ]]
 function game:play(action)
