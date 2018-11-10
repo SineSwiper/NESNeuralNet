@@ -14,12 +14,12 @@ function gameEnv:__init(_opt)
     self._actrep        = _opt.actrep or 1
     self._random_starts = _opt.random_starts or 1
     self.gameOverPenalty = _opt.gameOverPenalty or 0
-    self:reset(_opt.env, _opt.env_params)
     return self
 end
 
 
-function gameEnv:_updateState(frame, reward, terminal)
+function gameEnv:_updateState(data, reward, terminal)
+    self._state.observation  = data
     self._state.reward       = reward
     self._state.terminal     = terminal
     return self
@@ -42,6 +42,7 @@ function gameEnv:reset(_env, _params)
 
     self.game       = NES.game(env, params, self.game_path)
     self._actions   = self:getActions()
+    self.game:resetGame()
 
     -- start the game
     if self.verbose > 0 then
@@ -78,10 +79,10 @@ end
 function gameEnv:step(action, training)
     -- accumulate rewards over actrep action repeats
     local cumulated_reward = 0
-    local frame, reward, terminal
+    local data, reward, terminal
     for i=1,self._actrep do
         -- Take selected action; actions start with action "0".
-        frame, reward, terminal = self:_step(action)
+        data, reward, terminal = self:_step(action)
 
         -- accumulate instantaneous reward
         cumulated_reward = cumulated_reward + reward
@@ -89,7 +90,7 @@ function gameEnv:step(action, training)
         -- game over, no point to repeat current action
         if terminal then break end
     end
-    self:_updateState(frame, cumulated_reward, terminal)
+    self:_updateState(data, cumulated_reward, terminal)
     return self:getState()
 end
 

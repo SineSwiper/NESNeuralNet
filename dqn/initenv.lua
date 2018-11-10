@@ -116,6 +116,8 @@ function setup(_opt)
     assert(framework)
 
     local gameEnv = framework.GameEnvironment(opt)
+    gameEnv:reset(opt.env, opt.env_params)
+
     local gameActions = gameEnv:getActions()
 
     -- agent options

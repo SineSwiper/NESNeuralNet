@@ -26,16 +26,20 @@ local LEGAL_ACTIONS = {
     [22] = { A=true, B=true, left=true, right=true },
 }
 
+local BUTTON_SET = {'up','down','left','right','A','B','start','select'} 
+
 -- Fill in the rest of the buttons with false
-for _, btn_table in pairs(LEGAL_ACTIONS) do
-    for btn='up','down','left','right','A','B','start','select' do
+for _, btn_table in ipairs(LEGAL_ACTIONS) do
+    for _, btn in ipairs(BUTTON_SET) do
         if btn_table[btn] == nil then btn_table[btn] = false end
-    done
-done
+    end
+end
 
 local RomEnv = torch.class('NES.RomEnv')
 function RomEnv:__init()
-    self.prevVals = {}
+    self.prevVals = {
+        score = 0,
+    }
 end
 
 function RomEnv:skipStartScreen()
@@ -55,12 +59,12 @@ end
 function RomEnv:getCurrentScore()
     local score = 0
 
-    score += memory.readbyteunsigned(0x07dd) * 1000000
-    score += memory.readbyteunsigned(0x07de) *  100000
-    score += memory.readbyteunsigned(0x07df) *   10000
-    score += memory.readbyteunsigned(0x07e0) *    1000
-    score += memory.readbyteunsigned(0x07e1) *     100
-    score += memory.readbyteunsigned(0x07e2) *      10
+    score = score + memory.readbyteunsigned(0x07dd) * 1000000
+    score = score + memory.readbyteunsigned(0x07de) *  100000
+    score = score + memory.readbyteunsigned(0x07df) *   10000
+    score = score + memory.readbyteunsigned(0x07e0) *    1000
+    score = score + memory.readbyteunsigned(0x07e1) *     100
+    score = score + memory.readbyteunsigned(0x07e2) *      10
 
     return score
 end
@@ -71,7 +75,7 @@ function RomEnv:isGameOver()
 
     -- [0x000E] PlayerState: 0x06 Player dies, 0x0B Dying
     local player_state = memory.readbyteunsigned(0x000E)
-    if player_state == 6 || player_state == 11 then return true end
+    if player_state == 6 or player_state == 11 then return true end
 
     -- [0x0712] DeathMusicLoaded: boolean, usually used for falling deaths
     local death_music_loaded = memory.readbyteunsigned(0x0712)

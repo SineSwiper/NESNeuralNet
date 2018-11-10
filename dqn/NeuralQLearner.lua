@@ -9,7 +9,6 @@ if not dqn then
 end
 
 local nql = torch.class('dqn.NeuralQLearner')
-local win = nil
 
 
 function nql:__init(args)
@@ -75,17 +74,24 @@ function nql:__init(args)
 
     local msg, err = pcall(require, self.network)
     if not msg then
-        -- try to load saved agent
-        local err_msg, exp = pcall(torch.load, self.network)
-        if not err_msg then
-            error("Could not find network file. Error: " .. exp)
-        end
-        if self.best and exp.best_model then
-            print("Loading best model...")
-            self.network = exp.best_model
+        local file_check, err_msg = lfs.attributes(self.network)
+        if file_check then
+            -- try to load saved agent
+            local err_msg, exp = pcall(torch.load, self.network)
+            if not err_msg then
+                error("Could not find network file. Error: " .. exp)
+            end
+            if self.best and exp.best_model then
+                print("Loading best model...")
+                self.network = exp.best_model
+            else
+                print("Loading the latest (not necessarily the best) model...")
+                self.network = exp.model
+            end
         else
-            print("Loading the latest (not necessarily the best) model...")
-            self.network = exp.model
+            print("Network file not available: " .. err_msg)
+            print("Starting with a new network...")
+            self.network = self:createNetwork()
         end
     else
         print('Creating Agent Network from ' .. self.network)
@@ -168,21 +174,13 @@ function nql:reset(state)
     self.w, self.dw = self.network:getParameters()
     self.dw:zero()
     self.numSteps = 0
-    print("RESET STATE SUCCESFULLY")
 end
 
 
 function nql:preprocess(rawstate)
-
     if self.preproc then
       local input_state = self.preproc:forward(rawstate:float())
                                 :clone():reshape(self.state_dim)
-
-     -- Optionally display the preprocessed image...
-    if self.verbose > 3 then
-      win = image.display({image=input_state:clone():reshape(84, 84), win=win})
-    end                          
-                                
       return input_state
     end
 
@@ -342,7 +340,6 @@ end
 
 -- Main function for observing the results and learning.
 function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
-
     -- Preprocess state (will be set to nil if terminal)
     local state = self:preprocess(rawstate):float()
     local curState
@@ -358,7 +355,7 @@ function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
     -- Add the preprocessed state and terminal value to the recent state table.
     self.transitions:add_recent_state(state, terminal)
 
-    --Store transition s, a, r, s'
+    -- Store transition s, a, r, s'
     if self.lastState and not testing then
         self.transitions:add(self.lastState, self.lastAction, reward,
                              self.lastTerminal, priority)

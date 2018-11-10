@@ -30,16 +30,10 @@ function game:__init(gamename, options)
 
     self.name         = gamename
     self.env          = NES.NesEnv({})
-    self.observations = self.env:envStart()
+    self.observations = self.env:_generateObservations()
     self.action       = {torch.Tensor{0}}
 
-    self.game_over = function() return self.env.nes:isGameOver() end
-
-    -- setup initial observations by playing a no-action command
-    self:saveState()
-    local x = self:play(0)
-    self.observations[1] = x.data
-    self:loadState()
+    self.game_over = function() return self.env.romEnv:isGameOver() end
 end
 
 -- FIXME: Remove all of this nonsense

@@ -4,6 +4,8 @@ Copyright (c) 2014 Google Inc.
 See LICENSE file for full terms of limited license.
 ]]
 
+require "options.train"
+
 if not dqn then
     require "initenv"
 end
@@ -75,9 +77,6 @@ while step < opt.steps do
        end
     end
 
-    -- display screen
-    -- win = image.display({image=screen, win=win})
-
     -- Logging...
     if step % 10000 == 0 then
        local elapsed_step_time = sys.clock() - last_step_log_time
@@ -120,10 +119,6 @@ while step < opt.steps do
 
             -- Play game in test mode (episodes don't end when losing a life)
             screen, reward, terminal = game_env:step(game_actions[action_index])
-
-            -- display screen
-            -- This seems to cause crashes :\
-            -- win = image.display({image=screen, win=win})
 
             if estep%1000 == 0 then collectgarbage() end
 

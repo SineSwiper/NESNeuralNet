@@ -5,6 +5,8 @@ See LICENSE file for full terms of limited license.
 
 gd = require "gd"
 
+require "options.test"
+
 if not dqn then
     require "initenv"
 end

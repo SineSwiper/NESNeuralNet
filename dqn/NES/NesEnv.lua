@@ -40,8 +40,10 @@ function Env:__init(extraConfig)
     }
     updateDefaults(self.config, extraConfig)
 
-    require 'NES.Games.' .. GAME_NAME
+    require("NES.Games." .. GAME_NAME)
     self.romEnv = NES.RomEnv()
+
+    emu.speedmode('maximum')
 
     local obsShapes = {{SCREEN_HEIGHT, SCREEN_WIDTH}}
     if self.config.enableRamObs then
@@ -85,15 +87,17 @@ function Env:envStep(actions)
 end
 
 function Env:_createObs()
-    local obs = torch.ByteTensor(SCREEN_HEIGHT, SCREEN_WIDTH)
+    local obs = torch.FloatTensor(3, SCREEN_HEIGHT, SCREEN_WIDTH)
     local obs_data = torch.data(obs)
 
     for y=0,SCREEN_HEIGHT-1 do
         for x=0,SCREEN_WIDTH-1 do
-            local pixel_index = y*SCREEN_WIDTH + x + 1
+            local pixel_index = (y*SCREEN_WIDTH + x) * 3 + 1
 
             local r,g,b,palette = emu.getscreenpixel(x, y, true)
-            obs_data[pixel_index] = palette
+            obs_data[pixel_index + 0] = r / 255
+            obs_data[pixel_index + 1] = g / 255
+            obs_data[pixel_index + 2] = b / 255
         end
     end
 
