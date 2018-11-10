@@ -1,7 +1,7 @@
 -- dqn_options.lua
 
 require 'table'
-require 'luafilesystem'
+require 'lfs'
 
 local opt = {}
 opt.pool_frms    = {}
@@ -21,8 +21,6 @@ opt.env_params.useRGB=true
 
 -- PREPROCESSOR OPTIONS
 opt.agent_params.preproc="net_downsample_2x_full_y"
-opt.pool_frms.type="max"
-opt.pool_frms.size=1    -- Changed from 2 for Atari, since we don't have the same limitations for NES.
 opt.agent_params.state_dim=7056      -- The number of pixels in the screen, with 84x84 frames
 opt.agent_params.ncols=1             -- Represents just the Y (ie - grayscale) channel.
 opt.initial_priority="false"
@@ -73,7 +71,7 @@ opt.random_starts=0  -- How many NOOPs to perform at the start of a game (random
 opt.seed=1           -- Fixed input seed for repeatable experiments
 
 -- SAVE OPTIONS
-opt.network='saves/' .. opt.agent_name .. 'network.t7'
+opt.network='../saves/' .. opt.name .. 'network.t7'
 opt.saveNetworkParams=true  -- Saves the agent network in a separate file
 opt.save_version=0          -- Append floor(step / opt.save_versions) to the filename
 opt.save_freq=100000        -- Save every save_freq steps. Save early and often!

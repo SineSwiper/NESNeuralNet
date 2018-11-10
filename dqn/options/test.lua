@@ -1,6 +1,6 @@
 -- test.lua
 
-require "dqn_options"
+require "options.global"
 
 -- TEST-SPECIFIC OPTIONS
 globalDQNOptions.replay_memory=100             -- This doesn't matter for testing...
@@ -11,6 +11,4 @@ globalDQNOptions.agent_params.target_q=10000
 globalDQNOptions.agent_params.minibatch_size=256
 globalDQNOptions.gif_file="../gifs/$ENV.gif"   -- GIF path to write session screens
 globalDQNOptions.csv_file=""                   -- CSV path to write session data
-
-require "dqn.test_agent"
 
