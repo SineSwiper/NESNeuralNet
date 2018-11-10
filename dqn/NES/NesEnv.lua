@@ -87,19 +87,19 @@ function Env:envStep(actions)
 end
 
 function Env:_createObs()
-    local obs = torch.FloatTensor(3, SCREEN_HEIGHT, SCREEN_WIDTH)
-    local obs_data = torch.data(obs)
+    -- Grab an entire screenshot as a string (then remove the GD header)
+    local screen_str = gui.gdscreenshot()
+    screen_str = string.sub(screen_str, 12, -1)
 
-    for y=0,SCREEN_HEIGHT-1 do
-        for x=0,SCREEN_WIDTH-1 do
-            local pixel_index = (y*SCREEN_WIDTH + x) * 3 + 1
+    local RGBA_storage = torch.ByteStorage():string(screen_str)
 
-            local r,g,b,palette = emu.getscreenpixel(x, y, true)
-            obs_data[pixel_index + 0] = r / 255
-            obs_data[pixel_index + 1] = g / 255
-            obs_data[pixel_index + 2] = b / 255
-        end
-    end
+    -- Add the storage into a 3D, RGBA ByteTensor
+    -- (storage, storageOffset, sz1, st1 ... )
+    local screen_tensor = torch.ByteTensor(RGBA_storage, 1, 4, 0, SCREEN_HEIGHT, 0, SCREEN_WIDTH, 0)
+
+    -- Slice out the Alpha dimension and convert to Float
+    local obs = screen_tensor:narrow(1, 2, 3):type('torch.FloatTensor')
+    obs:div(255)
 
     return obs
 end
