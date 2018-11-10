@@ -15,6 +15,8 @@ require 'NeuralQLearner'
 require 'TransitionTable'
 require 'Rectifier'
 
+-- FCEUX likes to buffer STDOUT
+io.stdout:setvbuf("line")
 
 function torchSetup(_opt)
     _opt = _opt or {}
