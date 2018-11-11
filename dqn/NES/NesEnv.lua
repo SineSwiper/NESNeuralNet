@@ -105,14 +105,15 @@ function Env:_createObs()
 end
 
 function Env:_createRamObs()
-    local ram = torch.ByteTensor(RAM_LENGTH)
-    local ram_data = torch.data(ram)
+    -- Grab all of the RAM (as a string)
+    local ram_str = memory.readbyterange(0, RAM_LENGTH)
+    local ram_storage = torch.ByteStorage():string(ram_str)
 
-    for i=0,RAM_LENGTH-1,1 do
-        ram_data[i] = memory.readbyte(i)
-    end
+    -- Add the storage into a Byte Tensor
+    -- (storage, storageOffset, sz1, st1)
+    local obs = torch.ByteTensor(ram_storage, 1, RAM_LENGTH, 0)
 
-    return ram
+    return obs
 end
 
 -- Generates the observations for the current step.
