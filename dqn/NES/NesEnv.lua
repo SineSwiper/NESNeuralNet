@@ -3,6 +3,8 @@ local RAM_LENGTH    = 2048
 local SCREEN_WIDTH  = 256
 local SCREEN_HEIGHT = 240
 
+BUTTON_SET = {'up','down','left','right','A','B','start','select'}
+
 -- TODO: Move to main config parameters
 -- Configurable game name
 local GAME_NAME = 'SuperMarioBros'
@@ -83,7 +85,22 @@ function Env:envStep(actions)
     end
 
     local reward = self.romEnv:act(actions[1][1])
+    self.rowEnv:_displayButtons(actions[1][1])
     return reward, self:_generateObservations()
+end
+
+function Env:_displayButtons(act_num)
+    local xOff, yOff = self.romEnv:btnDisplayPos()
+    local action_set = self.rowEnv:getLegalActionSet()
+    local action     = action_set[act_num]
+
+    for _, btn in pairs(BUTTON_SET) do
+        local letter = string.upper( string.sub(btn, 1, 1) )
+        local color = 'black'
+        if action[btn] == true then color = 'white' end
+
+        gui.text(_ * 7 + xOff, yOff, letter, color, 'black')
+    end
 end
 
 function Env:_createObs()

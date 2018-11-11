@@ -26,8 +26,6 @@ local LEGAL_ACTIONS = {
     [22] = { A=true, B=true, left=true, right=true },
 }
 
-local BUTTON_SET = {'up','down','left','right','A','B','start','select'} 
-
 -- Fill in the rest of the buttons with false
 for _, btn_table in ipairs(LEGAL_ACTIONS) do
     for _, btn in ipairs(BUTTON_SET) do
@@ -53,8 +51,6 @@ function RomEnv:skipStartScreen()
         emu.frameadvance()
     end
 end
-
--- FIXME: Remove lives()
 
 function RomEnv:getCurrentScore()
     local score = 0
@@ -94,6 +90,10 @@ end
 
 function RomEnv:getNumLegalActions()
     return #LEGAL_ACTIONS + 1
+end
+
+function RowEnv:btnDisplayPos()
+    return 0, 35
 end
 
 -- Applies an action to the game and returns the reward. It is the user's responsibility
