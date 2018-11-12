@@ -12,9 +12,9 @@ opt.agent_params = {}
 opt.env="SuperMarioBros"
 
 -- FRAMEWORK OPTIONS
-opt.framework="NES"     -- New NES Lua Wrapper
-opt.steps=5000000       -- Total steps to run the model
-opt.game_path=lfs.currentdir() .. "/roms/"  -- Path to environment file (ROM)
+opt.framework="NES"       -- New NES Lua Wrapper
+opt.steps=5000000         -- Total steps to run the model
+opt.game_path='../roms/'  -- Path to environment file (ROM)
 
 -- NES ENV OPTIONS
 opt.env_params.useRGB=true
