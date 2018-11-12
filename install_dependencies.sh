@@ -35,6 +35,7 @@ sudo apt-get install -qqy libpng-dev
 sudo apt-get install -qqy ncurses-dev
 sudo apt-get install -qqy imagemagick
 sudo apt-get install -qqy unzip
+sudo apt-get install -qqy xvfb
 sudo apt-get install -qqy libqt4-dev
 sudo apt-get install -qqy liblua5.1-0-dev
 sudo apt-get install -qqy libgd-dev

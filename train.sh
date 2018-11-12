@@ -2,7 +2,7 @@
 TOPDIR=$PWD
 PREFIX=$PWD/torch
 
-LD_LIBRARY_PATH=$PREFIX/lib
+export LD_LIBRARY_PATH=$PREFIX/lib
 export LUA_PATH="./?.lua;./?/init.lua;;"
 
 # Copy stdout and stderr to a logfile

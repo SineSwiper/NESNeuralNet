@@ -1,4 +1,4 @@
--- dqn_options.lua
+-- options.global
 
 require 'table'
 require 'lfs'
@@ -71,9 +71,9 @@ opt.random_starts=0  -- How many NOOPs to perform at the start of a game (random
 opt.seed=1           -- Fixed input seed for repeatable experiments
 
 -- SAVE OPTIONS
-opt.network='../saves/' .. opt.name .. 'network.t7'
+opt.network='../networks/' .. opt.name .. '.t7'
 opt.saveNetworkParams=true  -- Saves the agent network in a separate file
-opt.save_version=0          -- Append floor(step / opt.save_versions) to the filename
-opt.save_freq=100000        -- Save every save_freq steps. Save early and often!
+opt.save_versions=0         -- Append floor(step / opt.save_versions) to the filename
+opt.save_freq=50000         -- Save every save_freq steps. Save early and often!
 
 globalDQNOptions = opt
