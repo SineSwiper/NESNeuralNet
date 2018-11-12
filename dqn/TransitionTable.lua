@@ -52,7 +52,7 @@ function trans:__init(args)
     end
 
     self.s = torch.ByteTensor(self.maxSize, self.stateDim):fill(0)
-    self.a = torch.LongTensor(self.maxSize):fill(0)
+    self.a = torch.ByteTensor(self.maxSize, self.numActions):fill(0)
     self.r = torch.zeros(self.maxSize)
     self.t = torch.ByteTensor(self.maxSize):fill(0)
     self.action_encodings = torch.eye(self.numActions)
@@ -64,7 +64,8 @@ function trans:__init(args)
     self.recent_t = {}
 
     local s_size = self.stateDim*histLen
-    self.buf_a      = torch.LongTensor(self.bufferSize):fill(0)
+    local a_size = self.numActions
+    self.buf_a      = torch.ByteTensor(self.bufferSize, a_size):fill(0)
     self.buf_r      = torch.zeros(self.bufferSize)
     self.buf_term   = torch.ByteTensor(self.bufferSize):fill(0)
     self.buf_s      = torch.ByteTensor(self.bufferSize, s_size):fill(0)
@@ -94,14 +95,15 @@ end
 
 
 function trans:fill_buffer()
-    assert(self.numEntries >= self.bufferSize)
+    assert(self.numEntries >= self.bufferSize, 'buffer has not be filled yet')
     -- clear CPU buffers
     self.buf_ind = 1
     local ind
     for buf_ind=1,self.bufferSize do
         local s, a, r, s2, term = self:sample_one(1)
+
         self.buf_s[buf_ind]:copy(s)
-        self.buf_a[buf_ind] = a
+        self.buf_a[buf_ind]:copy(a)
         self.buf_r[buf_ind] = r
         self.buf_s2[buf_ind]:copy(s2)
         self.buf_term[buf_ind] = term
@@ -238,7 +240,7 @@ end
 
 -- Return a full state in a given index: (s, a, r, s2, terminal).
 function trans:get(index)
-    local s = self:concatFrames(index)
+    local s  = self:concatFrames(index)
     local s2 = self:concatFrames(index+1)
     local ar_index = index+self.recentMemSize-1
 
@@ -373,7 +375,7 @@ function trans:read(file)
     self.insertIndex = 0
 
     self.s = torch.ByteTensor(self.maxSize, self.stateDim):fill(0)
-    self.a = torch.LongTensor(self.maxSize):fill(0)
+    self.a = torch.ByteTensor(self.maxSize, self.numActions):fill(0)
     self.r = torch.zeros(self.maxSize)
     self.t = torch.ByteTensor(self.maxSize):fill(0)
     self.action_encodings = torch.eye(self.numActions)
@@ -384,11 +386,13 @@ function trans:read(file)
     self.recent_a = {}
     self.recent_t = {}
 
-    self.buf_a      = torch.LongTensor(self.bufferSize):fill(0)
+    local s_size = self.stateDim*histLen
+    local a_size = self.numActions
+    self.buf_a      = torch.ByteTensor(self.bufferSize, a_size):fill(0)
     self.buf_r      = torch.zeros(self.bufferSize)
     self.buf_term   = torch.ByteTensor(self.bufferSize):fill(0)
-    self.buf_s      = torch.ByteTensor(self.bufferSize, self.stateDim * self.histLen):fill(0)
-    self.buf_s2     = torch.ByteTensor(self.bufferSize, self.stateDim * self.histLen):fill(0)
+    self.buf_s      = torch.ByteTensor(self.bufferSize, s_size):fill(0)
+    self.buf_s2     = torch.ByteTensor(self.bufferSize, s_size):fill(0)
 
     if self.gpu and self.gpu >= 0 then
         self.gpu_s  = self.buf_s:float():cuda()

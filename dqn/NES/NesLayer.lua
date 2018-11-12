@@ -31,7 +31,7 @@ function game:__init(gamename, options)
     self.name         = gamename
     self.env          = NES.NesEnv({})
     self.observations = self.env:_generateObservations()
-    self.action       = {torch.Tensor{0}}
+    self.action       = {}
 
     self.game_over = function() return self.env.romEnv:isGameOver() end
 end
@@ -62,10 +62,6 @@ function game:loadState()
     return self.env:loadState()
 end
 
-function game:actions()
-    return self.env:buildActionsTensor():storage():totable()
-end
-
 -- Ugly chain of function calls :(
 function game:resetGame()
     self.env:resetGame()
@@ -78,7 +74,7 @@ end
 
 --[[
 Parameters:
- * `action` (int), the action to play
+ * `action` (table), the buttons to play
 
 Returns a table containing the result of playing given action, with the
 following keys:
@@ -89,8 +85,7 @@ following keys:
  * `terminal` - (bool), true if the new state is a terminal state
 ]]
 function game:play(action)
-    action = action or 0
-    self.action[1][1] = action
+    self.action = action or {}
 
     -- take the step in the environment
     local reward, observations = self.env:envStep(self.action)

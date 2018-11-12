@@ -14,7 +14,7 @@ end
 local opt = globalDQNOptions
 
 --- General setup.
-local game_env, game_actions, agent, opt = setup(opt)
+local game_env, agent, opt = setup(opt)
 
 -- override print to always flush the output
 local old_print = print
@@ -43,8 +43,6 @@ im:gifAnimAdd(gif_filename, false, 0, 0, 7, gd.DISPOSAL_NONE)
 
 -- remember the image and show it first
 local previm = im
-local win = nil
--- local win = image.display({image=screen})
 
 print("Started playing...")
 
@@ -54,13 +52,10 @@ while not terminal do
     agent.bestq = 0
     
     -- choose the best action
-    local action_index = agent:perceive(reward, screen, terminal, true, 0.05)
+    local action = agent:perceive(reward, screen, terminal, true, 0.05)
 
     -- play game in test mode (episodes don't end when losing a life)
-    screen, reward, terminal = game_env:step(game_actions[action_index], false)
-
-    -- display screen
-    -- image.display({image=screen, win=win})
+    screen, reward, terminal = game_env:step(action, false)
 
     -- create gd image from tensor
     jpg = image.compressJPG(screen:squeeze(), 100)

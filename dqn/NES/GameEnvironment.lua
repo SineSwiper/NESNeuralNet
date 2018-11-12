@@ -40,8 +40,7 @@ function gameEnv:reset(_env, _params)
     end
     env = _env or env
 
-    self.game       = NES.game(env, params, self.game_path)
-    self._actions   = self:getActions()
+    self.game = NES.game(env, params, self.game_path)
     self.game:resetGame()
 
     -- start the game
@@ -50,7 +49,7 @@ function gameEnv:reset(_env, _params)
     end
 
     self:_resetState()
-    self:_updateState(self:_step(0))
+    self:_updateState(self:_step({}))
     self:getState()
     return self
 end
@@ -64,24 +63,23 @@ end
 
 -- Function plays `action` in the game and return game state.
 function gameEnv:_step(action)
-    assert(action)
+    assert(action, 'action is required')
+    assert(type(action) == 'table', 'action needs to be a table')
     local x = self.game:play(action)
     return x.data, x.reward, x.terminal
 end
 
-
--- Function plays one random action in the game and return game state.
-function gameEnv:_randomStep()
-    return self:_step(self._actions[torch.random(#self._actions)])
-end
-
-
 function gameEnv:step(action, training)
+    -- Convert ByteTensor to table
+    if torch.isTensor(action) then
+        action = action:totable()
+    end
+
     -- accumulate rewards over actrep action repeats
     local cumulated_reward = 0
     local data, reward, terminal
     for i=1,self._actrep do
-        -- Take selected action; actions start with action "0".
+        -- Take selected action
         data, reward, terminal = self:_step(action)
 
         -- accumulate instantaneous reward
@@ -99,7 +97,7 @@ end
 function gameEnv:newGame()
     self.game:resetGame()
     -- take one null action in the new game
-    return self:_updateState(self:_step(0)):getState()
+    return self:_updateState(self:_step({})):getState()
 end
 
 
@@ -118,6 +116,9 @@ function gameEnv:nextRandomGame(k)
     return self:_updateState(self:_step(0)):getState()
 end
 
+function gameEnv:nActions()
+    return self.game.env.envSpec.nActions
+end
 
 --[[ Function returns the number total number of pixels in one frame/observation
 from the current game.
@@ -126,8 +127,3 @@ function gameEnv:nObsFeature()
     return self.game:nObsFeature()
 end
 
-
--- Function returns a table with valid actions in the current game.
-function gameEnv:getActions()
-    return self.game:actions()
-end

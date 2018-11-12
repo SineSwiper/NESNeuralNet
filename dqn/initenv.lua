@@ -120,10 +120,8 @@ function setup(_opt)
     local gameEnv = framework.GameEnvironment(opt)
     gameEnv:reset(opt.env, opt.env_params)
 
-    local gameActions = gameEnv:getActions()
-
     -- agent options
-    _opt.agent_params.actions   = gameActions
+    _opt.agent_params.n_actions = gameEnv:nActions()
     _opt.agent_params.gpu       = _opt.gpu
     _opt.agent_params.best      = _opt.best
     if _opt.network ~= '' then
@@ -143,7 +141,7 @@ function setup(_opt)
         end
     end
 
-    return gameEnv, gameActions, agent, opt
+    return gameEnv, agent, opt
 end
 
 

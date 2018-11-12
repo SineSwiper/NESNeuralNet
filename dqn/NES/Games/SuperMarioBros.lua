@@ -1,37 +1,7 @@
--- TODO: Adapt CNN to use multiple dimensions for output to support multiple buttons
+-- Game-specific functions for Super Mario Bros
 
-local LEGAL_ACTIONS = {
-    [0]  = {},
-    [1]  = { A=true     },
-    [2]  = { B=true     },
-    [3]  = { up=true    },
-    [4]  = { right=true },
-    [5]  = { left=true  },
-    [6]  = { down=true  },
-    [7]  = { left=true, right=true },
-    [8]  = { A=true, up=true    },
-    [9]  = { A=true, right=true },
-    [10] = { A=true, left=true  },
-    [11] = { A=true, down=true  },
-    [12] = { A=true, left=true, right=true },
-    [13] = { B=true, up=true    },
-    [14] = { B=true, right=true },
-    [15] = { B=true, left=true  },
-    [16] = { B=true, down=true  },
-    [17] = { B=true, left=true, right=true },
-    [18] = { A=true, B=true, up=true    },
-    [19] = { A=true, B=true, right=true },
-    [20] = { A=true, B=true, left=true  },
-    [21] = { A=true, B=true, down=true  },
-    [22] = { A=true, B=true, left=true, right=true },
-}
-
--- Fill in the rest of the buttons with false
-for _, btn_table in ipairs(LEGAL_ACTIONS) do
-    for _, btn in ipairs(BUTTON_SET) do
-        if btn_table[btn] == nil then btn_table[btn] = false end
-    end
-end
+-- Player # then button
+local LEGAL_BUTTONS = {{1,'up'},{1,'down'},{1,'left'},{1,'right'},{1,'A'},{1,'B'}}
 
 local RomEnv = torch.class('NES.RomEnv')
 function RomEnv:__init()
@@ -84,32 +54,20 @@ function RomEnv:isGameOver()
     return false
 end
 
-function RomEnv:getLegalActionSet()
-    return LEGAL_ACTIONS
+function RomEnv:getLegalButtonSet()
+    return LEGAL_BUTTONS
 end
 
 function RomEnv:getNumLegalActions()
-    return #LEGAL_ACTIONS + 1
+    return #LEGAL_BUTTONS
 end
 
-function RowEnv:btnDisplayPos()
+function RomEnv:btnDisplayPos()
     return 0, 35
 end
 
--- Applies an action to the game and returns the reward. It is the user's responsibility
--- to check if the game has ended and reset when necessary - this method will keep pressing
--- buttons on the game over screen.
-function RomEnv:act(act_num)
-    local action = LEGAL_ACTIONS[act_num]
-    assert(type(action) == 'table', "one action is expected")
-
-    -- Set the action
-    joypad.set(1, action)
-
-    -- Frame advance
-    emu.frameadvance()
-
-    -- Reward computation
+-- Returns the reward, based on what's in the RAM after the action.
+function RomEnv:reward()
     local reward = 0
 
     -- [0x0057] Player horizontal speed

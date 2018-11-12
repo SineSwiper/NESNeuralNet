@@ -3,7 +3,7 @@ local RAM_LENGTH    = 2048
 local SCREEN_WIDTH  = 256
 local SCREEN_HEIGHT = 240
 
-BUTTON_SET = {'up','down','left','right','A','B','start','select'}
+local BUTTON_SET = {'up','down','left','right','A','B','start','select'}
 
 -- TODO: Move to main config parameters
 -- Configurable game name
@@ -71,11 +71,9 @@ function Env:envStart()
 end
 
 -- Does the specified actions and returns the (reward, observations) pair.
--- Valid actions:
---     {torch.Tensor(zeroBasedAction)}
-function Env:envStep(actions)
-    assert(#actions == 1, "one action is expected")
-    assert(actions[1]:nElement() == 1, "one discrete action is expected")
+function Env:envStep(action)
+    assert(action, 'action is required')
+    assert(type(action) == 'table', 'action needs to be a table')
 
     if self.romEnv:isGameOver() then
         self:resetGame()
@@ -84,22 +82,68 @@ function Env:envStep(actions)
         return self.config.gameOverReward, self:_generateObservations()
     end
 
-    local reward = self.romEnv:act(actions[1][1])
-    self.rowEnv:_displayButtons(actions[1][1])
+    local btns = self:_action2btn(action)
+    self:act(btns)
+    self:_displayButtons(btns)
+
+    local reward = self.romEnv:reward()
     return reward, self:_generateObservations()
 end
 
-function Env:_displayButtons(act_num)
+function Env:_action2btn(action)
+    local btns   = {}
+    local btnSet = self.romEnv:getLegalButtonSet()
+
+    -- Fill in the true values
+    for _, btnIsOn in pairs(action) do
+        local btn    = btnSet[_]
+        local player = btn[1]
+        local bName  = btn[2]
+
+        local btnBool = false
+        if btnIsOn > 0 then btnBool = true end
+
+        if btns[player] == nil then btns[player] = {} end
+        btns[player][bName] = btnBool
+    end
+
+    -- Fill in the rest of the buttons with false
+    for _, pBtns in pairs(btns) do
+        for _, btn in pairs(BUTTON_SET) do
+            if pBtns[btn] == nil then pBtns[btn] = false end
+        end
+    end
+
+    return btns
+end
+
+-- Applies an action to the game
+function Env:act(btns)
+    assert(type(btns) == 'table', "buttons should be a table")
+
+    -- Set the action
+    for _, pBtns in pairs(btns) do
+        joypad.set(_, pBtns)
+    end
+
+    -- Frame advance
+    emu.frameadvance()
+end
+
+function Env:_displayButtons(btns)
     local xOff, yOff = self.romEnv:btnDisplayPos()
-    local action_set = self.rowEnv:getLegalActionSet()
-    local action     = action_set[act_num]
 
-    for _, btn in pairs(BUTTON_SET) do
-        local letter = string.upper( string.sub(btn, 1, 1) )
-        local color = 'black'
-        if action[btn] == true then color = 'white' end
+    for player, pBtns in pairs(btns) do
+        for _, btn in pairs(BUTTON_SET) do
+            local letter = string.upper( string.sub(btn, 1, 1) )
+            local color = 'white'
+            if pBtns[btn] == true then color = 'red' end
 
-        gui.text(_ * 7 + xOff, yOff, letter, color, 'black')
+            local x = _ * 7 + xOff
+            local y = (player-1) * 10 + yOff
+
+            gui.text(x, y, letter, color, 'black')
+        end
     end
 end
 
@@ -143,17 +187,6 @@ function Env:_generateObservations()
     else
         return {obs}
     end
-end
-
-function Env:buildActionsTensor()
-    local btn = torch.ByteTensor(self.envSpec.nActions)
-    local btn_data = torch.data(btn)
-
-    for i=0,self.envSpec.nActions-1,1 do
-        btn_data[i] = i
-    end
-
-    return btn
 end
 
 function Env:resetGame()

@@ -13,7 +13,7 @@ end
 local opt = globalDQNOptions
 
 --- General setup.
-local game_env, game_actions, agent, opt = setup(opt)
+local game_env, agent, opt = setup(opt)
 
 -- override print to always flush the output
 local old_print = print
@@ -46,14 +46,14 @@ local last_step_log_time = sys.clock()
 local win = nil
 while step < opt.steps do
     step = step + 1 
-    local action_index = agent:perceive(reward, screen, terminal)
+    local action = agent:perceive(reward, screen, terminal)
 
     -- game over? get next game!
     if not terminal then
     
         -- Play the selected action in the emulator. 
         -- Record the resulting screen, reward, and whether this was terminal.
-        screen, reward, terminal = game_env:step(game_actions[action_index], true)
+        screen, reward, terminal = game_env:step(action, true)
             
       -- Spam the console.
       if opt.verbose > 3 and reward ~= 0 then
@@ -115,10 +115,10 @@ while step < opt.steps do
 
         local eval_time = sys.clock()
         for estep=1,opt.eval_steps do
-            local action_index = agent:perceive(reward, screen, terminal, true, 0.05)
+            local action = agent:perceive(reward, screen, terminal, true, 0.05)
 
             -- Play game in test mode (episodes don't end when losing a life)
-            screen, reward, terminal = game_env:step(game_actions[action_index])
+            screen, reward, terminal = game_env:step(action)
 
             if estep%1000 == 0 then collectgarbage() end
 
