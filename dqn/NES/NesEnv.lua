@@ -149,7 +149,7 @@ end
 
 function Env:_createObs()
     -- Grab an entire screenshot as a string (then remove the GD header)
-    local screen_str = gui.gdscreenshot()
+    local screen_str = gui.gdscreenshot(1)
     screen_str = string.sub(screen_str, 12, -1)
 
     local RGBA_storage = torch.ByteStorage():string(screen_str)
