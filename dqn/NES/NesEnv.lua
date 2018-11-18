@@ -170,17 +170,22 @@ end
 
 function Env:_createObs()
     -- Grab an entire screenshot as a string (then remove the GD header)
-    local screen_str = gui.gdscreenshot(1)
+    local screen_str = gui.gdscreenshot(true)
     screen_str = string.sub(screen_str, 12, -1)
 
-    local RGBA_storage = torch.ByteStorage():string(screen_str)
+    -- Add the screen string into a 3D, ARGB ByteTensor
+    local screen_tensor = torch.ByteTensor(SCREEN_HEIGHT, SCREEN_WIDTH, 4)
+    screen_tensor:storage():string(screen_str)
 
-    -- Add the storage into a 3D, RGBA ByteTensor
-    -- (storage, storageOffset, sz1, st1 ... )
-    local screen_tensor = torch.ByteTensor(RGBA_storage, 1, 4, 0, SCREEN_HEIGHT, 0, SCREEN_WIDTH, 0)
+    -- Unfortunately, the color channels are in the wrong dimension, so we need to move
+    -- them around.  While we're here, remove the Alpha channel.
+    local byte_obs = torch.ByteTensor(3, SCREEN_HEIGHT, SCREEN_WIDTH)
+    for i=1,3,1 do
+        byte_obs[i] = screen_tensor:select(3, i+1)
+    end
 
-    -- Slice out the Alpha dimension and convert to Float
-    local obs = screen_tensor:narrow(1, 2, 3):type('torch.FloatTensor')
+    -- Convert to float
+    local obs = byte_obs:type('torch.FloatTensor')
     obs:div(255)
 
     return obs
@@ -189,11 +194,11 @@ end
 function Env:_createRamObs()
     -- Grab all of the RAM (as a string)
     local ram_str = memory.readbyterange(0, RAM_LENGTH)
-    local ram_storage = torch.ByteStorage():string(ram_str)
 
     -- Add the storage into a Byte Tensor
     -- (storage, storageOffset, sz1, st1)
-    local obs = torch.ByteTensor(ram_storage, 1, RAM_LENGTH, 0)
+    local obs = torch.ByteTensor(RAM_LENGTH)
+    obs:storage():string(ram_str)
 
     return obs
 end
