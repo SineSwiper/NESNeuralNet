@@ -1,0 +1,103 @@
+Original tensor: 256x240x3 = 184,320 bytes
+
+RAM = 2048 bytes
+
+Types of data:
+    Integers
+    Signed Integers
+    Bitmaps
+    Status values
+
+Layer 1: 2048
+    1D byte representation of RAM (ByteTensor)
+
+    + torch.nn.RReLU
+    + Batch Normalization
+
+Layer 2-6: 2048x280
+    torch.stack(
+        8L Copy   of Layer 1 ( torch.view + mm(1/255) ) * 8
+        8L Copy   of Layer 1 ( convert to signed + mm(1/255) ) * 8
+        Bitmap    of Layer 1 ( torch.bitand(a, $bit) for 2**0-7 )
+        Value map of Layer 1 ( torch.eq(a, $val) for 0-255 )
+    )
+
+    + Conv2d with 8x8 kernels, 4x4 strides, 4x8 padding
+    + torch.nn.RReLU
+    + Batch Normalization
+
+    + Conv2d with 4x4 kernels, 2x2 strides, 2x4 padding
+    + torch.nn.RReLU
+    + Batch Normalization
+
+    + Conv2d with 2x2 kernels, 1x1 strides, 1x2 padding
+    + torch.nn.RReLU
+    + Batch Normalization
+
+    + Conv2d with 1x1 kernels, 1x1 strides, no padding
+    + torch.nn.RReLU
+    + Batch Normalization
+
+    Fully-connected layer
+
+Layer 7-?:
+    nn.LSTM(
+        hidden_size ??
+        num_layers  2 but growing
+        dropout     0.5 (recommended level for RNNs)
+        batch_first ??
+    )
+
+Last Layer: 2048
+    Fully-connected layer to outputs
+
+--------------------
+
+lua_engine wishlist:
+
+    [DONE!] Full stack traces for "Lua thread bombed out"
+        https://stackoverflow.com/questions/12256455/print-stacktrace-from-c-code-with-embedded-lua
+
+    [DONE!] getemuscreen for gui.gdscreenshot
+        XBackBuf already accessible (uint8 *buf = &XBuf)
+    string memory.readfullrange (if readbyterange is too slow)
+        ??? readfunc ARead; might be too low-level...
+
+    [DONE!] Fix print to not do extra \r\n
+
+    emu.romfilename
+        FileBase
+
+    Movie commands:
+        [Needs Testing] movie.play(string filename, bool read_only, int pauseframe)
+            FCEUI_LoadMovie(const char *fname, bool _read_only, int _pauseframe)
+
+        [Needs Testing] movie.record(string filename, int flags, string author)
+            FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author)
+
+            Flags = FROM_POWERON, FROM_SAVERAM, NONE (partial movie)
+
+        movie.getinfo?
+            FCEUI_MovieGetInfo(FCEUFILE* fp, MOVIE_INFO& info, bool skipFrameCount)
+
+        movie.savebackup?
+            FCEUI_MakeBackupMovie(bool dispMessage)
+
+
+
+    --novideo option (SDL Xwindow NULL interface?)
+
+--------------------
+
+Other DQN improvements:
+
+    * [DONE!] Use speed run movie data as training examples
+    * [DONE!] Run through entire speed run movies as training data in the beginning
+    * Actrep should get smaller and smaller (every 500K steps, for example)
+    * Save movies, for both example runs and fast runs
+    * Split up NN into levels (might be still too hard for 8-4)
+    * Make sure networks are competing for time/reward/whatever
+    * Add adrenaline for dangerous gameplay:
+        * Use 4 different savestates (1/10/100/1000 frames back) to revert back to while in "death spiral"
+        * Add greater reward for being close to a death spiral frame point
+        * Actually hitting death still incurs a penalty
