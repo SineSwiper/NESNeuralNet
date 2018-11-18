@@ -1,4 +1,3 @@
-
 require 'convnet'
 
 return function(args)
