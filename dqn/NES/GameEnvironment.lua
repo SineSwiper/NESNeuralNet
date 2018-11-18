@@ -127,3 +127,15 @@ function gameEnv:nObsFeature()
     return self.game:nObsFeature()
 end
 
+-- Human training functions
+function gameEnv:fillTrainingActions()
+    local training_actions = {}
+    self.game.env:fillTrainingActions(training_actions, self._actrep)
+    return training_actions
+end
+
+function gameEnv:fillAllTrainingActions()
+    local training_actions = {}
+    self.game.env:fillTrainingActions(training_actions, 1, 1, table.getn(self.game.env.trainingCache))
+    return training_actions
+end

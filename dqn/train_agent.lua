@@ -42,10 +42,33 @@ local episode_reward
 -- Take one single initial step to get kicked-off...
 local screen, reward, terminal = game_env:getState()
 
+-- XXX: This should probably be in the main loop...
+
+-- Start with full-on human training data (isn't even counted as steps)
+agent.training_actions = game_env:fillAllTrainingActions()
+game_env._actrep = 1
+
+while table.getn(agent.training_actions) do
+    if agent.training_actions[1][1] == 'reset' then
+        game_env.game:resetGame()
+        table.remove(agent.training_actions, 1)
+    else
+        local action = agent:perceive(reward, screen, terminal, false, 2)  -- 2 = human training
+
+        screen, reward, terminal = game_env:step(action, true)
+    end
+end
+
+game_env._actrep = opt.actrep
+
+-- Main loop
 local last_step_log_time = sys.clock()
-local win = nil
 while step < opt.steps do
-    step = step + 1 
+    if table.getn(agent.training_actions) == 0 and torch.uniform() < 0.10 then
+        agent.training_actions = game_env:fillTrainingActions()
+    end
+
+    step = step + 1
     local action = agent:perceive(reward, screen, terminal)
 
     -- game over? get next game!

@@ -30,9 +30,10 @@ opt.agent="NeuralQLearner"  -- Name of agent file to use
 opt.agent_type="DQN3_0_1"
 opt.name=table.concat({opt.agent_type, opt.env, 'FULL_Y'}, "_")  -- Filename used for saving network and training history
 
-opt.agent_params.ep=1               -- The probability of choosing a random action rather than the best predicted action.
+opt.agent_params.ep=1               -- The probability of choosing a random/human action rather than the best predicted action.
 opt.agent_params.ep_end=0.01        -- What epsilon ends up as going forward.
 opt.agent_params.ep_endt=1000000    -- This probability decreases over time, presumably as we get better.
+opt.agent_params.ep_human=0.90      -- The probability (after EP is hit) that the action will be from the human training set.
 opt.agent_params.max_reward=10000   -- Rewards are clipped to this value.
 opt.agent_params.min_reward=-10000  -- Ditto.
 opt.agent_params.rescale_r=1        -- Rescale rewards to [-1, 1]
@@ -43,9 +44,9 @@ opt.gameOverPenalty=1   -- Gives a negative reward upon dying.
 opt.actrep=8            -- Number of times an action is repeated
 
 -- LEARNING OPTIONS
-opt.agent_params.lr=0.00025  -- .00025 for Atari.
-opt.agent_params.learn_start=50000        -- Only start learning after this many steps. Should be bigger than bufferSize. Was set to 50k for Atari.
-opt.agent_params.replay_memory=1000000    -- Set small to speed up debugging. 1M is the Atari setting... Big memory object!
+opt.agent_params.lr=0.00025               -- Learning rate
+opt.agent_params.learn_start=2000         -- Only start learning after this many steps. Should be bigger than bufferSize.
+opt.agent_params.replay_memory=1000000    -- Set small to speed up debugging.  Big memory object!
 opt.agent_params.n_replay=4               -- Minibatches to learn from each learning step.
 opt.agent_params.nonEventProb=nil         -- Probability of selecting a non-reward-bearing experience.
 opt.agent_params.clip_delta=1             -- Limit the delta to +/- 1.

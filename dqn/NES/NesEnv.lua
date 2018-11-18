@@ -3,7 +3,25 @@ local RAM_LENGTH    = 2048
 local SCREEN_WIDTH  = 256
 local SCREEN_HEIGHT = 240
 
-local BUTTON_SET = {'up','down','left','right','A','B','start','select'}
+local FRAME2BUTTON = {
+    ['R']='right',
+    ['L']='left',
+    ['D']='down',
+    ['U']='up',
+    ['T']='start',
+    ['S']='select',
+    ['B']='B',
+    ['A']='A',
+}
+local BUTTON2FRAME = {}
+local BUTTON_SET   = {}
+
+for i=1,8,1 do
+    local letter = string.sub('UDLRBAST', i, i)
+    local button = FRAME2BUTTON[letter]
+    table.insert(BUTTON_SET, button)
+    BUTTON2FRAME[button] = letter
+end
 
 -- TODO: Move to main config parameters
 -- Configurable game name
@@ -55,6 +73,9 @@ function Env:__init(extraConfig)
         nActions=self.romEnv:getNumLegalActions(),
         obsShapes=obsShapes,
     }
+
+    self.trainingCache={}
+    self:fillTrainingCache()
 end
 
 -- Returns a description of the observation shapes
@@ -135,7 +156,7 @@ function Env:_displayButtons(btns)
 
     for player, pBtns in pairs(btns) do
         for _, btn in pairs(BUTTON_SET) do
-            local letter = string.upper( string.sub(btn, 1, 1) )
+            local letter = BUTTON2FRAME[btn]
             local color = 'white'
             if pBtns[btn] == true then color = 'red' end
 
@@ -189,8 +210,96 @@ function Env:_generateObservations()
     end
 end
 
+function Env:fillTrainingCache()
+    -- XXX: Hard-coded directory here...
+    local dir = '../movies/training'
+
+    -- Find movie files to use and sort them
+    local fm_files = {}
+    for file in lfs.dir(dir) do
+        local full_path = dir .. '/' .. file
+        if string.match(file, '.fm2$') and lfs.attributes(full_path, 'mode') == 'file' then
+            table.insert(fm_files, full_path)
+        end
+    end
+    table.sort(fm_files)
+
+    -- Read the movie files
+    for _, full_path in ipairs(fm_files) do
+        local skip_frames = self.romEnv:getNumSkipFrames()
+
+        for line in io.lines(full_path) do
+            --- XXX: Need header sanity checks here
+            
+            if string.match(line, '^|%d+|.*|.*|.*|.*$') then
+                if skip_frames > 0 then
+                    skip_frames = skip_frames - 1
+                    -- Insert reset line
+                    if skip_frames == 0 then table.insert(self.trainingCache, '|1||||') end
+                else
+                    -- Frame data; process this later
+                    table.insert(self.trainingCache, line)
+                end
+            end
+        end
+
+        print("Loaded " .. full_path .. " into training cache")
+    end
+end
+
+function Env:fillTrainingActions(actions, step, min, len)
+    -- Random bits
+    if not len then len = torch.random(1, 300) end  -- upwards of 5 seconds
+    if not min then min = torch.random(table.getn(self.trainingCache) - len) end
+    local max = min + len - 1
+
+    -- Button table prep
+    local btnSet = self.romEnv:getLegalButtonSet()
+    local idxSet = {}  -- reverse lookup
+    for _, btn in pairs(btnSet) do
+        local key = btn[1] .. ',' .. BUTTON2FRAME[btn[2]]
+        idxSet[key] = _
+    end 
+
+    -- Process frame lines (with dynamic loop control)
+    local i = min
+    while i <= max do
+        --- XXX: Only supports Player 1 right now
+        local movie_line = self.trainingCache[i]
+        local flags, player_one = string.match(movie_line, '^|(%d+)|([^|]*)|')
+
+        -- Special action to reset the game.  Only used if it appears that
+        -- full human training is requested.
+        if flags == '1' then
+            if step == 1 and min == 1 then table.insert(actions, { 'reset' }) end
+            i = i + 1
+
+        -- Early stages of learning needs more active development, so skip
+        -- blank actions when the step isn't very accurate, anyway.
+        elseif (step >= 4 and not string.match(player_one, '[A-Z]')) then
+            i = i + 1
+            max = math.min(max + 1, table.getn(self.trainingCache))
+
+        -- Standard action
+        else
+            local action = {}
+            for j=1,string.len(player_one),1 do
+                local b = string.sub(player_one, j, j)
+                if b ~= '.' and FRAME2BUTTON[b] then
+                    local key = '1,' .. b
+                    local val = idxSet[key]
+                    if val then table.insert(action, val) end
+                end
+            end
+
+            table.insert(actions, action)
+            i = i + step
+        end
+    end
+end
+
 function Env:resetGame()
-    emu.softreset()
+    emu.poweron()
     self.romEnv:skipStartScreen()
 end
 

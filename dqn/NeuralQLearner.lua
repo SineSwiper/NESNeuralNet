@@ -22,6 +22,7 @@ function nql:__init(args)
     self.ep         = self.ep_start -- Exploration probability.
     self.ep_end     = args.ep_end or self.ep
     self.ep_endt    = args.ep_endt or 1000000
+    self.ep_human   = args.ep_human or 0
 
     ---- learning rate annealing
     self.lr_start       = args.lr or 0.01 --Learning rate.
@@ -61,6 +62,8 @@ function nql:__init(args)
     self.bufferSize     = args.bufferSize or 512
 
     self.transition_params = args.transition_params or {}
+
+    self.training_actions = {}
 
     self.network    = args.network or self:createNetwork()
 
@@ -146,7 +149,7 @@ function nql:__init(args)
     self.tderr_avg = 0 -- Temporal-difference error running average.
 
     self.q_max = 1
-    self.r_max = math .max(torch.abs(self.max_reward), torch.abs(self.min_reward))
+    self.r_max = math.max(torch.abs(self.max_reward), torch.abs(self.min_reward))
 
     self.w, self.dw = self.network:getParameters() -- Load the weights.
     self.dw:zero() -- Set gradient to zero.
@@ -419,13 +422,22 @@ function nql:ePositiveMatch(state, testing_ep)
 
     -- Select an action, maybe randomly.
     if torch.uniform() < self.ep then
-
-        -- Select multiple random actions, with probability ep.
         local btns = torch.ByteTensor(self.n_actions):fill(0)
-        for i= 1, self.n_actions do
-            -- Don't hit *all* the buttons at once.  Keep the mix at 25%.
-            if torch.random(1, 4) == 4 then btns[i] = 1 end
+
+        if (testing_ep > 1 or torch.uniform() < self.ep_human) and self.training_actions and table.getn(self.training_actions) > 0 then
+            -- Select the top action from the human training pool
+            local action = table.remove(self.training_actions, 1)
+            for _, v in pairs(action) do
+                btns[v] = 1
+            end
+        else
+            -- Select multiple random actions, with probability ep.
+            for i= 1, self.n_actions do
+                -- Don't hit *all* the buttons at once.  Keep the mix at 25%.
+                if torch.uniform() < 0.25 then btns[i] = 1 end
+            end
         end
+
         return btns
     else
         -- Select the actions with a positive Q

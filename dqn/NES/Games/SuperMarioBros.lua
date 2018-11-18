@@ -12,14 +12,22 @@ end
 
 function RomEnv:skipStartScreen()
     -- Run a few frames first to get to the startup screen.
-    for i=1,60,1 do
+    for i=1,41,1 do
         emu.frameadvance()
     end
+
     -- Hit the start button
-    for i=1,10,1 do
-        joypad.set(1, { start=true })
+    joypad.set(1, { start=true })
+    emu.frameadvance()
+
+    -- Skip the 1-1 screen
+    for i=1,154,1 do
         emu.frameadvance()
     end
+end
+
+function RomEnv:getNumSkipFrames()
+    return 41+1+154
 end
 
 function RomEnv:getCurrentScore()
@@ -47,9 +55,8 @@ function RomEnv:isGameOver()
     local death_music_loaded = memory.readbyteunsigned(0x0712)
     if death_music_loaded > 0 then return true end
 
-    -- [0x0770] GameState: 02 = End game (dead)
-    local game_state = memory.readbyteunsigned(0x0770)
-    if game_state == 2 then return true end
+    -- [0x0770] GameState: 02 = End game
+    -- XXX: Can't trust this.  End game also happens during world changes.
 
     return false
 end
