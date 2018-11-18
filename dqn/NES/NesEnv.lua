@@ -53,20 +53,20 @@ function Env:__init(extraConfig)
         -- Note that many games don't change the score
         -- when loosing or gaining a life.
         gameOverReward=0,
-        -- Screen display can be enabled.
-        display=false,
-        -- The RAM can be returned as an additional observation.
-        enableRamObs=false,
+        -- observation points
+        useRGB=true,
+        useRAM=false,
     }
     updateDefaults(self.config, extraConfig)
 
     require("NES.Games." .. GAME_NAME)
     self.romEnv = NES.RomEnv()
 
+    -- Highest frame rate while still keeping all of the frames
     emu.speedmode('maximum')
 
     local obsShapes = {{SCREEN_HEIGHT, SCREEN_WIDTH}}
-    if self.config.enableRamObs then
+    if self.config.useRAM then
         obsShapes={{SCREEN_HEIGHT, SCREEN_WIDTH}, {RAM_LENGTH}}
     end
     self.envSpec = {
@@ -78,14 +78,7 @@ function Env:__init(extraConfig)
     self:fillTrainingCache()
 end
 
--- Returns a description of the observation shapes
--- and of the possible actions.
-function Env:getEnvSpec()
-    return self.envSpec
-end
-
 -- Returns a list of observations.
--- The integer palette values are returned as the observation.
 function Env:envStart()
     self:resetGame()
     return self:_generateObservations()
@@ -100,7 +93,7 @@ function Env:envStep(action)
         self:resetGame()
         -- The first screen of the game will be also
         -- provided as the observation.
-        return self.config.gameOverReward, self:_generateObservations()
+        return self:_generateObservations(), self.config.gameOverReward, true  -- true = terminal
     end
 
     local btns = self:_action2btn(action)
@@ -108,7 +101,7 @@ function Env:envStep(action)
     self:_displayButtons(btns)
 
     local reward = self.romEnv:reward()
-    return reward, self:_generateObservations()
+    return self:_generateObservations(), reward, false
 end
 
 function Env:_action2btn(action)
@@ -168,7 +161,7 @@ function Env:_displayButtons(btns)
     end
 end
 
-function Env:_createObs()
+function Env:_createRGBObs()
     -- Grab an entire screenshot as a string (then remove the GD header)
     local screen_str = gui.gdscreenshot(true)
     screen_str = string.sub(screen_str, 12, -1)
@@ -191,12 +184,11 @@ function Env:_createObs()
     return obs
 end
 
-function Env:_createRamObs()
+function Env:_createRAMObs()
     -- Grab all of the RAM (as a string)
     local ram_str = memory.readbyterange(0, RAM_LENGTH)
 
     -- Add the storage into a Byte Tensor
-    -- (storage, storageOffset, sz1, st1)
     local obs = torch.ByteTensor(RAM_LENGTH)
     obs:storage():string(ram_str)
 
@@ -205,14 +197,16 @@ end
 
 -- Generates the observations for the current step.
 function Env:_generateObservations()
-    local obs = self:_createObs()
+    local obs_table = {}
 
-    if self.config.enableRamObs then
-        local ram = self:_createRamObs()
-        return {obs, ram}
-    else
-        return {obs}
+    if self.config.useRGB then
+        obs_table[1] = self:_createRGBObs()
     end
+    if self.config.useRAM then
+        obs_table[2] = self:_createRAMObs()
+    end
+
+    return obs_table
 end
 
 function Env:fillTrainingCache()
@@ -306,20 +300,4 @@ end
 function Env:resetGame()
     emu.poweron()
     self.romEnv:skipStartScreen()
-end
-
-function Env:saveState()
-    -- NOT IMPLEMENTED!
-end
-
-function Env:loadState()
-    -- NOT IMPLEMENTED!
-end
-
-function Env:saveSnapshot()
-    -- NOT IMPLEMENTED!
-end
-
-function Env:restoreSnapshot(snapshot)
-    -- NOT IMPLEMENTED!
 end

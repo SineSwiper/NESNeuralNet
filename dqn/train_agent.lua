@@ -44,7 +44,7 @@ game_env._actrep = 1
 
 while table.getn(agent.training_actions) do
     if agent.training_actions[1][1] == 'reset' then
-        game_env.game:resetGame()
+        game_env.NesEnv:resetGame()
         table.remove(agent.training_actions, 1)
     else
         local action = agent:perceive(reward, screen, terminal, false, 2)  -- 2 = human training
@@ -74,24 +74,15 @@ while step < opt.steps do
             
       -- Spam the console.
       if opt.verbose > 3 and reward ~= 0 then
-        print("Reward: " .. reward)
+         print("Reward: " .. reward)
       end
     else
-      if opt.random_starts > 0 then
-          screen, reward, terminal = game_env:nextRandomGame()
-            
-          -- Spam the console.
-          if opt.verbose > 3 then
-            print("New random episode.")
-          end
-      else
-          screen, reward, terminal = game_env:newGame()
-            
-          -- Spam the console.
-          if opt.verbose > 3 then
-            print("New episode.")
-          end
-       end
+      screen, reward, terminal = game_env:newGame()
+        
+      -- Spam the console.
+      if opt.verbose > 3 then
+         print("New episode.")
+      end
     end
 
     -- Logging...
@@ -158,11 +149,7 @@ while step < opt.steps do
                 if opt.verbose > 3 then
                   print("Total Reward: " .. total_reward)
                 end
-                if opt.random_starts > 0 then
-                  screen, reward, terminal = game_env:nextRandomGame()
-                else
-                  screen, reward, terminal = game_env:newGame()
-                end
+                screen, reward, terminal = game_env:newGame()
             end
         end
 

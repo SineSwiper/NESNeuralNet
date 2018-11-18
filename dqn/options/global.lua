@@ -14,10 +14,10 @@ opt.env="SuperMarioBros"
 -- FRAMEWORK OPTIONS
 opt.framework="NES"       -- New NES Lua Wrapper
 opt.steps=5000000         -- Total steps to run the model
-opt.game_path='../roms/'  -- Path to environment file (ROM)
 
 -- NES ENV OPTIONS
 opt.env_params.useRGB=true
+opt.env_params.useRAM=false  -- NN for RAM not supported yet... coming soon!
 
 -- PREPROCESSOR OPTIONS
 opt.agent_params.preproc="net_downsample_2x_full_y"
@@ -40,7 +40,6 @@ opt.agent_params.rescale_r=1        -- Rescale rewards to [-1, 1]
 opt.agent_params.bufferSize=1024
 opt.agent_params.valid_size=1000
 
-opt.gameOverPenalty=1   -- Gives a negative reward upon dying.
 opt.actrep=8            -- Number of times an action is repeated
 
 -- LEARNING OPTIONS
@@ -68,7 +67,6 @@ opt.prog_freq=50000     -- How often do you want a progress report?
 opt.gpu=-1           -- Zero means "use the GPU" which is a bit confusing... -1 for CPU.
 opt.threads=8        -- Number of BLAS threads
 opt.verbose=3        -- 2 is default. 3 turns on debugging messages about what the model is doing.
-opt.random_starts=0  -- How many NOOPs to perform at the start of a game (random number up to this value). Shouldn't matter for SMB?
 opt.seed=1           -- Fixed input seed for repeatable experiments
 
 -- SAVE OPTIONS
