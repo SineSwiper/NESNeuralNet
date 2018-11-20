@@ -44,6 +44,7 @@ game_env._actrep = 1
 
 while table.getn(agent.training_actions) do
     if agent.training_actions[1][1] == 'reset' then
+print('FOUND RESET IN TRAINING!')
         game_env.NesEnv:resetGame()
         table.remove(agent.training_actions, 1)
     else
@@ -60,6 +61,7 @@ local last_step_log_time = sys.clock()
 while step < opt.steps do
     if table.getn(agent.training_actions) == 0 and torch.uniform() < 0.10 then
         agent.training_actions = game_env:fillTrainingActions()
+print('FILLED TRAIN', table.getn(agent.training_actions))
     end
 
     step = step + 1

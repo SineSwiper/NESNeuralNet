@@ -454,6 +454,8 @@ function nql:positiveMatch(state)
     -- Feed the state into the current network.
     local q = self.network:forward(state):float():squeeze()
 
+print('q', q)
+
     -- Find any positive matches
     local btns = torch.ByteTensor(self.n_actions):fill(0)
     for i = 1, self.n_actions do

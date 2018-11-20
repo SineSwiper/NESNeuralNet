@@ -48,11 +48,9 @@ end
 local Env = torch.class('NES.NesEnv')
 function Env:__init(extraConfig)
     self.config = {
-        -- An additional reward signal can be provided
-        -- after the end of one game.
-        -- Note that many games don't change the score
-        -- when loosing or gaining a life.
-        gameOverReward=0,
+        -- Reward/penalty to give after dying
+        gameOverReward=-10000,
+
         -- observation points
         useRGB=true,
         useRAM=false,
