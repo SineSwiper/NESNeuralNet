@@ -22,37 +22,24 @@ if [[ `which apt-get` == '' ]]; then
     exit
 fi
 
-# Install dependencies for Torch:
-sudo apt-get update
-sudo apt-get install -qqy build-essential
-sudo apt-get install -qqy gcc g++
-sudo apt-get install -qqy cmake
-sudo apt-get install -qqy curl
-sudo apt-get install -qqy libreadline-dev
-sudo apt-get install -qqy git-core
-sudo apt-get install -qqy libjpeg-dev
-sudo apt-get install -qqy libpng-dev
-sudo apt-get install -qqy ncurses-dev
-sudo apt-get install -qqy imagemagick
-sudo apt-get install -qqy unzip
-sudo apt-get install -qqy xvfb
-sudo apt-get install -qqy libqt4-dev
-sudo apt-get install -qqy liblua5.1-0-dev
-sudo apt-get install -qqy libgd-dev
-sudo apt-get install -qqy scons
-sudo apt-get install -qqy libgtk2.0-dev
-sudo apt-get install -qqy libsdl-dev
-sudo apt-get update
+# Install dependencies for Torch
+echo -e "\n==> Installing OS dependencies\n"
 
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential gcc g++ cmake curl libreadline-dev git-core libjpeg-dev libpng-dev libncurses5-dev imagemagick unzip xvfb \
+    libqt4-dev liblua5.1-0-dev libgd-dev scons libgtk2.0-dev libsdl-dev libmkl-full-dev
 
-echo "==> Torch7's dependencies have been installed"
+echo -e "\n==> OS dependencies install finished\n"
 
 # Create directory for sources
 mkdir -p $TOPDIR/src
 
 # Build and install Torch7
+echo -e "\n==> Installing Torch7\n"
+
 cd $TOPDIR/src
-git clone https://github.com/torch/luajit-rocks.git
+[ -d 'luajit-rocks' ] || git clone https://github.com/torch/luajit-rocks.git
 cd luajit-rocks
 mkdir -p build
 cd build
@@ -62,49 +49,48 @@ cmake .. -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Release
 make
 make install
 
-# Install base packages:
-$PREFIX/bin/luarocks install cwrap
-$PREFIX/bin/luarocks install paths
-$PREFIX/bin/luarocks install torch
-$PREFIX/bin/luarocks install nn
+echo -e "\n==> Torch7 install finished\n"
 
-# Install GPU packages:
+# Install manifest in home directory to get rid of warnings
+
+mkdir -p $HOME/.luarocks/lib/luarocks/rocks
+$PREFIX/bin/luarocks-admin make-manifest --local-tree --tree=$HOME/.luarocks
+
+# Install base+GPU packages
+echo -e "\n==> Installing Lua dependencies\n"
+
+gpu_rocks=''
 path_to_nvcc=$(which nvcc)
-if [ -x "$path_to_nvcc" ]
-then
-    $PREFIX/bin/luarocks install cutorch
-    $PREFIX/bin/luarocks install cunn
-fi
+[ -x "$path_to_nvcc" ] && gpu_rocks='cutorch cunn'
 
-$PREFIX/bin/luarocks install luafilesystem
-$PREFIX/bin/luarocks install penlight
-$PREFIX/bin/luarocks install sys
-$PREFIX/bin/luarocks install xlua
-$PREFIX/bin/luarocks install image
-$PREFIX/bin/luarocks install env
+LUAROCKS=$PREFIX/bin/luarocks
+for rock in cwrap paths torch nn luafilesystem penlight sys xlua image env nngraph $gpu_rocks; do
+    # Don't install already-installed rocks
+    [[ `$LUAROCKS list | grep "^$rock\$"` ]] || $LUAROCKS install $rock
+done
+
 #$PREFIX/bin/luarocks install qtlua
 #$PREFIX/bin/luarocks install qttorch
-$PREFIX/bin/luarocks install nngraph
 
-echo ""
-echo "=> Torch7 has been installed successfully"
-echo ""
+echo -e "\n==> Lua dependencies install finished\n"
 
-echo "Installing FCEUX ... "
+echo -e "\n==> Installing FCEUX\n"
+
 cd $TOPDIR/src
-git clone https://github.com/TASVideos/fceux
+[ -d 'fceux' ] || git clone https://github.com/SineSwiper/fceux
 cd fceux
+git checkout feature/lua_enhancements
 LUA_LINKFLAGS='-L'$PREFIX'/lib -lluajit' LUA_INCDIR=$PREFIX'/include' scons SYSTEM_LUA=1 --prefix $PREFIX install
-echo "FCEUX installation completed"
 
-echo "Installing Lua-GD ... "
-cd $TOPDIR/src
-git clone https://github.com/ittner/lua-gd.git
-cd lua-gd
-sed -i "s/LUABIN=lua5.1/LUABIN=..\/..\/bin\/luajit/" Makefile
-$PREFIX/bin/luarocks make
-echo "Lua-GD installation completed"
+echo -e "\n==> FCEUX install finished\n"
 
-echo
-echo "All done!"
+#echo "Installing Lua-GD ... "
+#cd $TOPDIR/src
+#git clone https://github.com/ittner/lua-gd.git
+#cd lua-gd
+#sed -i "s/LUABIN=lua5.1/LUABIN=..\/..\/bin\/luajit/" Makefile
+#$PREFIX/bin/luarocks make
+#echo "Lua-GD installation completed"
+
+echo -e "\n==== All done! ====\n"
 
