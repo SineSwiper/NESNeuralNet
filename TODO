@@ -96,8 +96,18 @@ Other DQN improvements:
     * Actrep should get smaller and smaller (every 500K steps, for example)
     * Save movies, for both example runs and fast runs
     * Split up NN into levels (might be still too hard for 8-4)
+    * torch.load should load more data than just agent.network
     * Make sure networks are competing for time/reward/whatever
     * Add adrenaline for dangerous gameplay:
         * Use 4 different savestates (1/10/100/1000 frames back) to revert back to while in "death spiral"
+            * savestate.object each frame
+            * For each granularity, keep track of 10 separate savestates (1 has each frame, 10 has 10 for every 10 frames, etc.)
+            * For each granularity, check C-S>=G+PG (C=current frame, S=savestate frame, G=granularity, PG=next lower G)
+            * If so, then grab the oldest PG savestate and use it for the newest G savestate
+            * Savestates are only created/saved outside of the death spiral, and only loaded inside of it
         * Add greater reward for being close to a death spiral frame point
         * Actually hitting death still incurs a penalty
+    * Add forward-seeking code to calculate adrenaline score, while outside of death spiral
+        * Save state, advance frame up to 8 frames with current action (or no action, or both?) to see if death occurs
+        * Important for human training, since death is never actually encountered, but needs to be taught as "death-defying"
+ 
