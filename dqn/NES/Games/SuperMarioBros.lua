@@ -12,7 +12,7 @@ end
 
 function RomEnv:skipStartScreen()
     -- Run a few frames first to get to the startup screen.
-    for i=1,41,1 do
+    for i=1,33,1 do
         emu.frameadvance()
     end
 
@@ -21,13 +21,13 @@ function RomEnv:skipStartScreen()
     emu.frameadvance()
 
     -- Skip the 1-1 screen
-    for i=1,154,1 do
+    for i=1,162,1 do
         emu.frameadvance()
     end
 end
 
 function RomEnv:getNumSkipFrames()
-    return 41+1+154
+    return 33+1+162
 end
 
 function RomEnv:getCurrentScore()
