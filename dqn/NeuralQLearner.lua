@@ -417,8 +417,12 @@ function nql:ePositiveMatch(state, testing_ep)
     -- Select an action, maybe randomly.
     if torch.uniform() < self.ep then
         local btns = torch.ByteTensor(self.n_actions):fill(0)
+        local in_human_training = testing_ep and testing_ep > 1
 
-        if (testing_ep > 1 or torch.uniform() < self.ep_human) and self.training_actions and table.getn(self.training_actions) > 0 then
+        if 
+            (in_human_training or torch.uniform() < self.ep_human) and
+            self.training_actions and table.getn(self.training_actions) > 0
+        then
             -- Select the top action from the human training pool
             local action = table.remove(self.training_actions, 1)
             for _, v in pairs(action) do

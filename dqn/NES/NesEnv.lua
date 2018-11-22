@@ -266,7 +266,9 @@ function Env:fillTrainingActions(actions, step, min, len)
         local flags, player_one = string.match(movie_line, '^|(%d+)|([^|]*)|')
 
         -- Special action to reset the game.  Only used if it appears that
-        -- full human training is requested.
+        -- full human training is requested.  Note that in normal *.fm2 files
+        -- the rest of the line applies (but is usually blank), but not in the
+        -- manner we're using it above (with "|1||||").
         if flags == '1' then
             if step == 1 and min == 1 then table.insert(actions, { 'reset' }) end
             i = i + 1

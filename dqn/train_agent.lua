@@ -36,36 +36,45 @@ local episode_reward
 -- Take one single initial step to get kicked-off...
 local screen, reward, terminal = game_env:getState()
 
--- XXX: This should probably be in the main loop...
+-- Start with full-on human training data
+local in_human_training = true
 
--- Start with full-on human training data (isn't even counted as steps)
 agent.training_actions = game_env:fillAllTrainingActions()
 game_env._actrep = 1
 
-while table.getn(agent.training_actions) do
-    if agent.training_actions[1][1] == 'reset' then
-print('FOUND RESET IN TRAINING!')
-        game_env.NesEnv:resetGame()
-        table.remove(agent.training_actions, 1)
-    else
-        local action = agent:perceive(reward, screen, terminal, false, 2)  -- 2 = human training
-
-        screen, reward, terminal = game_env:step(action, true)
-    end
-end
-
-game_env._actrep = opt.actrep
+local human_training_actions = table.getn(agent.training_actions)
 
 -- Main loop
 local last_step_log_time = sys.clock()
 while step < opt.steps do
-    if table.getn(agent.training_actions) == 0 and torch.uniform() < 0.10 then
+    -- Human training
+    if in_human_training then
+        if table.getn(agent.training_actions) > 0 then
+            -- New training set; reset game
+            if agent.training_actions[1][1] == 'reset' then
+                print("\nNew human training movie")
+                print("========================")
+                game_env.NesEnv:resetGame()
+                table.remove(agent.training_actions, 1)
+            end
+        else
+            -- End of human training
+            in_human_training = false
+            game_env.NesEnv:resetGame()
+            game_env._actrep = opt.actrep
+        end
+    elseif table.getn(agent.training_actions) == 0 and torch.uniform() < 0.10 then
         agent.training_actions = game_env:fillTrainingActions()
 print('FILLED TRAIN', table.getn(agent.training_actions))
     end
 
     step = step + 1
-    local action = agent:perceive(reward, screen, terminal)
+    local action
+    if in_human_training then
+        action = agent:perceive(reward, screen, terminal, false, 2)  -- 2 = human training
+    else
+        action = agent:perceive(reward, screen, terminal)
+    end
 
     -- game over? get next game!
     if not terminal then
@@ -110,7 +119,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
 
     if step%1000 == 0 then collectgarbage() end
 
-    if step % opt.eval_freq == 0 and step > learn_start then
+    if not in_human_training and step % opt.eval_freq == 0 and step > learn_start then
     
         print("***********")
         print("Starting evaluation!")
@@ -180,7 +189,8 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
 
         local time_dif = time_history[ind+1] - time_history[ind]
 
-        local training_rate = opt.actrep*opt.eval_freq/time_dif
+        -- FIXME
+        local training_rate = game_env._actrep*opt.eval_freq / time_dif
 
         print(string.format(
             '\nSteps: %d (frames: %d), reward: %.2f, epsilon: %.2f, lr: %G, ' ..
