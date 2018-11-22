@@ -83,24 +83,24 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         -- Record the resulting screen, reward, and whether this was terminal.
         screen, reward, terminal = game_env:step(action, true)
             
-      -- Spam the console.
-      if opt.verbose > 3 and reward ~= 0 then
-         print("Reward: " .. reward)
-      end
+        -- Spam the console.
+        if opt.verbose > 3 and reward ~= 0 then
+            print("Reward: " .. reward)
+        end
     else
-      screen, reward, terminal = game_env:newGame()
+        screen, reward, terminal = game_env:newGame()
         
-      -- Spam the console.
-      if opt.verbose > 3 then
-         print("New episode.")
-      end
+        -- Spam the console.
+        if opt.verbose > 2 then
+            print("New episode")
+        end
     end
 
     -- Logging...
     if step % 10000 == 0 then
-       local elapsed_step_time = sys.clock() - last_step_log_time
-       last_step_log_time = sys.clock()
-       print("Steps: " .. step .. " Time: " .. elapsed_step_time)
+        local elapsed_step_time = sys.clock() - last_step_log_time
+        last_step_log_time = sys.clock()
+        print("Steps: " .. step .. " Time: " .. elapsed_step_time)
     end
 
     if step % opt.prog_freq == 0 then
@@ -112,7 +112,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         
         -- Save the hist_len most recent frames.
         if opt.verbose > 3 then
-          agent:printRecent()
+            agent:printRecent()
         end
         collectgarbage()
     end
@@ -144,12 +144,12 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
             -- record every reward
             episode_reward = episode_reward + reward
             if reward ~= 0 then
-               nrewards = nrewards + 1
+                nrewards = nrewards + 1
             end
 
             if opt.verbose > 3 and reward ~= 0 then
-              print("Episode Reward: " .. episode_reward)
-              print ("Number of Rewards: " .. nrewards)
+                print("Episode Reward: " .. episode_reward)
+                print ("Number of Rewards: " .. nrewards)
             end
 
             if terminal then
@@ -158,7 +158,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
                 nepisodes = nepisodes + 1
 
                 if opt.verbose > 3 then
-                  print("Total Reward: " .. total_reward)
+                    print("Total Reward: " .. total_reward)
                 end
                 screen, reward, terminal = game_env:newGame()
             end
@@ -202,6 +202,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
     end
 
     if step % opt.save_freq == 0 or step == opt.steps then
+        -- Don't store these values; restore them back after the save
         local s, a, r, s2, term = agent.valid_s, agent.valid_a, agent.valid_r,
             agent.valid_s2, agent.valid_term
         agent.valid_s, agent.valid_a, agent.valid_r, agent.valid_s2,
@@ -215,26 +216,33 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         if opt.save_versions > 0 then
             filename = filename .. "_" .. math.floor(step / opt.save_versions)
         end
+
+        -- XXX: Hard-coded directory
         filename = '../networks/' .. filename
-        torch.save(filename .. ".t7", {agent = agent,
-                                model = agent.network,
-                                best_model = agent.best_network,
-                                reward_history = reward_history,
-                                reward_counts = reward_counts,
-                                episode_counts = episode_counts,
-                                time_history = time_history,
-                                v_history = v_history,
-                                td_history = td_history,
-                                qmax_history = qmax_history,
-                                arguments=opt})
+        torch.save(filename .. ".t7", {
+            agent          = agent,
+            model          = agent.network,
+            best_model     = agent.best_network,
+            reward_history = reward_history,
+            reward_counts  = reward_counts,
+            episode_counts = episode_counts,
+            time_history   = time_history,
+            v_history      = v_history,
+            td_history     = td_history,
+            qmax_history   = qmax_history,
+            arguments      = opt
+        })
         if opt.saveNetworkParams then
             local nets = {network=w:clone():float()}
             torch.save(filename..'.params.t7', nets, 'ascii')
         end
+
+        -- Putting the values back
         agent.valid_s, agent.valid_a, agent.valid_r, agent.valid_s2,
             agent.valid_term = s, a, r, s2, term
         agent.w, agent.dw, agent.g, agent.g2, agent.delta, agent.delta2,
             agent.deltas, agent.tmp = w, dw, g, g2, delta, delta2, deltas, tmp
+
         print("***********")    
         print('Saved:', filename .. '.t7')
         print("***********")

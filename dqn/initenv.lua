@@ -130,10 +130,11 @@ function setup(_opt)
     local agent = dqn[_opt.agent](_opt.agent_params)
 
     if opt.verbose >= 1 then
-        print('Set up Torch using these options:')
+        print("\nSet up Torch using these options:\n")
         for k, v in pairs(opt) do
             print(k, v)
         end
+        print("\n")
     end
 
     return gameEnv, agent, opt
