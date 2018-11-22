@@ -64,7 +64,7 @@ opt.eval_steps=10000    -- How many steps does an evaluation last? 125k for Atar
 opt.prog_freq=50000     -- How often do you want a progress report?
 
 -- PERFORMANCE AND DEBUG OPTIONS
-opt.gpu=-1           -- Zero means "use the GPU" which is a bit confusing... -1 for CPU.
+opt.gpu=0            -- Zero means "use the GPU" which is a bit confusing... -1 for CPU.
 opt.threads=8        -- Number of BLAS threads
 opt.verbose=3        -- 2 is default. 3 turns on debugging messages about what the model is doing.
 opt.seed=1           -- Fixed input seed for repeatable experiments
