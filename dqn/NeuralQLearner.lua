@@ -59,7 +59,8 @@ function nql:__init(args)
 
     self.training_actions = {}
 
-    self.network    = args.network or self:createNetwork()
+    self.network    = args.network
+    assert(self.network, 'Network required')
 
     -- check whether there is a network file
     local network_function
@@ -85,9 +86,7 @@ function nql:__init(args)
                 self.network = exp.model
             end
         else
-            print("Network file not available: " .. err_msg)
-            print("Starting with a new network...")
-            self.network = self:createNetwork()
+            error("Network file not available: " .. err_msg)
         end
     else
         print('Creating Agent Network from ' .. self.network)
@@ -202,11 +201,20 @@ function nql:getQUpdate(args)
 
     -- delta = r + (1-terminal) * gamma * avg_a Q(s2, a) - Q(s, a)
 
-    -- XXX: This needs unsqueeze, but torch7 doesn't have it yet
+    -- XXX: These two "add dimension" operations needs unsqueeze, but torch7 doesn't have it
+
     -- term is 1D, but needs to be 2D for q2 cmul calculations
     term = torch.FloatTensor( 1, term:size(1) )
     term[1] = args.term:clone():float():mul(-1):add(1)
     term = term:t():expand( args.term:size(1), self.n_actions ):clone()
+
+    -- a is 2D, but needs to be 3dish (and one-based) for some gather calls below
+    a = torch.LongTensor( a:size(1), a:size(2), 1 )
+    for i=1, a:size(1) do
+        for j=1, a:size(2) do
+            a[i][j][1] = args.a[i][j] + 1  -- 0 = Off = index 1, 1 = On = index 2
+        end
+    end
 
     -- If we don't have a target Q network yet, make one and use it.
     local target_q_net
@@ -217,18 +225,22 @@ function nql:getQUpdate(args)
     end
 
     -- Using *Double* DQN here for a multi-action selector
-    -- For each s2 in the minibatch, calculate the Q-value using the *online*
-    -- and *target* networks,  Then average the two together.
-    q2_online = self.network:forward(s2):float()
-    q2_target = target_q_net:forward(s2):float()
+    -- For each s2 in the minibatch, pick the action with the highest value using the
+    -- *online* network and then calculate the Q-value of s2 given this action using the
+    -- *target* network.
+    q2_online, best_a = self.network:forward(s2):float():max(3)  -- 3D -> 2Dish (Time x Action x 1 = Max Q)
 
-    q2_avg = q2_online:clone():add(q2_target):div(2)
+    -- Get the Q-values for the best actions we identified above, using the *target* network.
+    q2_target = target_q_net:forward(s2):float()       -- 3D (Time x Action x On/Off = Q)
+    q2_max    = q2_target:gather(3, best_a):squeeze()  -- 2D (Time x Action = Max Q)
 
-    -- Compute q2 = (1-terminal) * gamma * avg_a Q(s2, a)
+    -- Compute q2 = (1-terminal) * gamma * max_a Q(s2, a)
     -- Discounted by gamma and set to zero if terminal.
-    q2 = q2_avg:clone():mul(self.discount):cmul(term)
+    -- 2D (Time X Action = Max Q*Gamma or 0)
+    q2 = q2_max:clone():mul(self.discount):cmul(term)
 
     -- Set delta equal to the rewards in the minibatch.
+    -- 1Dish -> 2D (Time X Action = Rewards)
     delta = torch.FloatTensor( 1, r:size(1) )
     delta[1] = r:clone():float()
     delta = delta:t():expand( r:size(1), self.n_actions ):clone()
@@ -239,27 +251,34 @@ function nql:getQUpdate(args)
     end
 
     -- Add the discounted Q(s2, a) values to these rewards.
-    delta:add(q2)
+    delta:add(q2)  -- 2D + 2D
 
     -- q = Q(s,a)
     -- This estimates the value of state s for actions a using the *online* network,
-    local q = self.network:forward(s):float()
+    local q_all = self.network:forward(s):float()  -- 3D (Time x Action x On/Off = Q)
+    q = q_all:gather(3, a):squeeze()               -- 2D (Time x Action = Q of each selected On/Off state)
 
     -- Finally, subtract out the Q(s, a) values.
-    delta:add(-1, q)
+    delta:add(-1, q)  -- 2D + 2D
 
     -- Keep the deltas bounded, if requested.
     if self.clip_delta then
         delta:clamp(-self.clip_delta, self.clip_delta)
     end
 
-    local targets = delta:clone():cmul( a:float() )
+    -- Create targets equal to the deltas of each selected action
+    -- 3D (Time x Action x On/Off = [after loop] deltas of each selected action or 0)
+    local targets = torch.zeros(self.minibatch_size, self.n_actions, 2):float()
+    for i=1,math.min(self.minibatch_size,a:size(1)) do
+        for j=1,self.n_actions do
+            targets[i][j][ a[i][j][1] ] = delta[i][j]
+        end
+    end
 
     if self.gpu >= 0 then targets = targets:cuda() end
 
-    return targets, delta, q2_avg
+    return targets, delta, q2_max
 end
-
 
 function nql:qLearnMinibatch()
     -- Perform a minibatch Q-learning update:
@@ -270,7 +289,7 @@ function nql:qLearnMinibatch()
     local s, a, r, s2, term = self.transitions:sample(self.minibatch_size)
 
     -- Feed these experiences into the Q network.
-    local targets, delta, q2_avg = self:getQUpdate{s=s, a=a, r=r, s2=s2, term=term}
+    local targets, delta, q2_max = self:getQUpdate{s=s, a=a, r=r, s2=s2, term=term}
 
     -- zero gradients of parameters
     self.dw:zero()
@@ -314,14 +333,12 @@ end
 
 -- Compute the mean Q value and the TD error for our early validation experiences.
 function nql:compute_validation_statistics()
-    local targets, delta, q2_avg = self:getQUpdate{s=self.valid_s,
+    local targets, delta, q2_max = self:getQUpdate{s=self.valid_s,
         a=self.valid_a, r=self.valid_r, s2=self.valid_s2, term=self.valid_term}
-
-    -- XXX: Is this still accurate with multi-action selectors?
 
     -- This is the average Q value of the target network for the highest-value action.
     -- This ideally should rise with learning and stabalize at a reasonable value...
-    self.v_avg = q2_avg:mean()
+    self.v_avg = self.q_max * q2_max:mean()
 
     -- This in essence is the difference between the target and current networks' value estimate for Q(s, a).
     -- This should approach zero with time as learning slows...
@@ -369,7 +386,7 @@ function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
     -- hist_len frames.
     local action = torch.ByteTensor(self.n_actions):fill(0)
     if not terminal then
-        action = self:ePositiveMatch(curState, testing_ep)
+        action = self:pickTrainingActions(testing_ep) or self:dipSwitchMatch(curState)
     end
 
     -- Add this action to our experiences.
@@ -390,8 +407,8 @@ function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
     end
 
     -- Save the state and action for the next round.
-    self.lastState = state:clone()
-    self.lastAction = action
+    self.lastState    = state:clone()
+    self.lastAction   = action
     self.lastTerminal = terminal
 
     -- After target_q steps, replace the existing Q network with the newer one.
@@ -404,12 +421,12 @@ function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
 end
 
 -- Return an action for the given state.
-function nql:ePositiveMatch(state, testing_ep)
+function nql:pickTrainingActions(testing_ep)
     self.ep = testing_ep or (
         -- ep_start, ep_end = max/min Exploration Probability
         self.ep_end + math.max(0,
             (self.ep_start - self.ep_end) *  -- EP range (ie: 1-.1 = 90%)
-            (self.ep_endt - math.max(0, self.numSteps - self.learn_start)) / 
+            (self.ep_endt - math.max(0, self.numSteps - self.learn_start)) /
             self.ep_endt
         )
     )
@@ -419,7 +436,7 @@ function nql:ePositiveMatch(state, testing_ep)
         local btns = torch.ByteTensor(self.n_actions):fill(0)
         local in_human_training = testing_ep and testing_ep > 1
 
-        if 
+        if
             (in_human_training or torch.uniform() < self.ep_human) and
             self.training_actions and table.getn(self.training_actions) > 0
         then
@@ -437,14 +454,15 @@ function nql:ePositiveMatch(state, testing_ep)
         end
 
         return btns
-    else
-        -- Select the actions with a positive Q
-        return self:positiveMatch(state)
     end
+
+    return nil
 end
 
--- Return the actions with positive values, given this state.
-function nql:positiveMatch(state)
+-- Return the actions based on a 2D map of "dip switches", using the on/off state with
+-- the highest Q value
+function nql:dipSwitchMatch(state)
+
     -- Turn single state into minibatch.  Needed for convolutional nets.
     if state:dim() == 2 then
         assert(false, 'Input must be at least 3D')
@@ -458,89 +476,13 @@ function nql:positiveMatch(state)
     -- Feed the state into the current network.
     local q = self.network:forward(state):float():squeeze()
 
-print('q', q)
-
-    -- Find any positive matches
+    -- Mark the ones that are on (row 2), and use those actions
     local btns = torch.ByteTensor(self.n_actions):fill(0)
     for i = 1, self.n_actions do
-        if q[i] > 0 then btns[i] = 1 end
+        if q[i][2] > q[i][1] then btns[i] = 1 end
     end
 
     return btns
-end
-
--- Return an action for the given state.
-function nql:eGreedy(state, testing_ep)
-    self.ep = testing_ep or (self.ep_end +
-                math.max(0, (self.ep_start - self.ep_end) * (self.ep_endt -
-                math.max(0, self.numSteps - self.learn_start))/self.ep_endt))
-
-    -- Select an action, maybe randomly.
-    if torch.uniform() < self.ep then
-
-        -- Select a random action, with probability ep.
-        return torch.random(1, self.n_actions)
-    else
-
-        -- Select the action with the highest Q value.
-        return self:greedy(state)
-    end
-end
-
--- Return the action with the highest value given this state.
-function nql:greedy(state)
-    -- Turn single state into minibatch.  Needed for convolutional nets.
-    if state:dim() == 2 then
-        assert(false, 'Input must be at least 3D')
-        state = state:resize(1, state:size(1), state:size(2))
-    end
-
-    if self.gpu >= 0 then
-        state = state:cuda()
-    end
-
-    -- Feed the state into the current network.
-    local q = self.network:forward(state):float():squeeze()
-
-    -- Initialize the best Q and best action variables.
-    local maxq = q[1]
-    local besta = {1}
-
-    -- Evaluate all other actions (with random tie-breaking)
-    for a = 2, self.n_actions do
-        if q[a] > maxq then
-            besta = { a }
-            maxq = q[a]
-
-        -- Tie, add a second best action to the list.
-        elseif q[a] == maxq then
-            besta[#besta+1] = a
-        end
-    end
-
-    -- Keep track of our highest Q value.
-    self.bestq = maxq
-
-    local r = torch.random(1, #besta)
-
-    -- Pick at random from the equally-performing actions.
-    self.lastAction = besta[r]
-
-    return besta[r]
-end
-
-
-function nql:createNetwork()
-    local n_hid = 128
-    local mlp = nn.Sequential()
-    mlp:add(nn.Reshape(self.hist_len*self.ncols*self.state_dim))
-    mlp:add(nn.Linear(self.hist_len*self.ncols*self.state_dim, n_hid))
-    mlp:add(nn.Rectifier())
-    mlp:add(nn.Linear(n_hid, n_hid))
-    mlp:add(nn.Rectifier())
-    mlp:add(nn.Linear(n_hid, self.n_actions))
-
-    return mlp
 end
 
 

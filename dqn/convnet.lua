@@ -45,8 +45,9 @@ function create_network(args)
         net:add(args.nl())
     end
 
-    -- add the last fully connected layer (to actions)
-    net:add(nn.Linear(last_layer_size, args.n_actions))
+    -- add the last fully connected layer (to actions, as 2D "dip switches")
+    net:add(nn.Linear(last_layer_size, args.n_actions * 2))
+    net:add(nn.View(args.n_actions, 2))
 
     if args.gpu >=0 then
         net:cuda()

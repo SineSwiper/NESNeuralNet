@@ -119,9 +119,15 @@ function setup(_opt)
     _opt.agent_params.n_actions = gameEnv:nActions()
     _opt.agent_params.gpu       = _opt.gpu
     _opt.agent_params.best      = _opt.best
-    if _opt.network ~= '' then
+
+    -- figure out what network to use
+    local file_check, err_msg = lfs.attributes(_opt.network)
+    if not file_check then
+        print("Network file not available: " .. err_msg)
+    elseif _opt.network ~= '' then
         _opt.agent_params.network = _opt.network
     end
+
     _opt.agent_params.verbose = _opt.verbose
     if not _opt.agent_params.state_dim then
         _opt.agent_params.state_dim = gameEnv:nObsFeature()
