@@ -8,8 +8,9 @@ opt.pool_frms    = {}
 opt.env_params   = {}
 opt.agent_params = {}
 
--- ROM OPTIONS
-opt.env="SuperMarioBros"
+-- GAME NAME
+opt.gamename=string.match(rom.getfilename(), "^[%w _-&'%.!]+")
+opt.gamename=string.gsub(opt.gamename, "[ '%.!]", '')
 
 -- FRAMEWORK OPTIONS
 opt.framework="NES"       -- New NES Lua Wrapper
@@ -28,7 +29,7 @@ opt.initial_priority="false"
 -- AGENT OPTIONS
 opt.agent="NeuralQLearner"  -- Name of agent file to use
 opt.agent_type="DQN3_0_1"
-opt.name=table.concat({opt.agent_type, opt.env, 'FULL_Y'}, "_")  -- Filename used for saving network and training history
+opt.name=table.concat({opt.agent_type, opt.gamename, 'FULL_Y'}, "_")  -- Filename used for saving network and training history
 
 opt.agent_params.ep=1               -- The probability of choosing a random/human action rather than the best predicted action.
 opt.agent_params.ep_end=0.01        -- What epsilon ends up as going forward.

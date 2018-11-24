@@ -25,6 +25,7 @@ function torchSetup(_opt)
     end
     if opt.env_params then
         opt.env_params = str_to_table(opt.env_params)
+        opt.env_params.gamename = opt.gamename
     end
     if opt.agent_params then
         opt.agent_params = str_to_table(opt.agent_params)

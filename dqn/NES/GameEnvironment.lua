@@ -28,15 +28,13 @@ function gameEnv:getState()
 end
 
 function gameEnv:reset(_env, _params)
-    -- TODO: Use emu.romname
-    local game_name = _env
     local params = _params or {useRGB=true}
 
     self.NesEnv = NES.NesEnv(params)
 
     -- start the game
     if self.verbose > 0 then
-        print('\nPlaying:', game_name)
+        print('\nPlaying:', self.NesEnv.config.gamename)
     end
     self:newGame()
     return self

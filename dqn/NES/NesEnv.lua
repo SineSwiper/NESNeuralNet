@@ -23,10 +23,6 @@ for i=1,8,1 do
     BUTTON2FRAME[button] = letter
 end
 
--- TODO: Move to main config parameters
--- Configurable game name
-local GAME_NAME = 'SuperMarioBros'
-
 -- Copies values from src to dst.
 local function update(dst, src)
     for k, v in pairs(src) do
@@ -38,7 +34,6 @@ end
 local function updateDefaults(dst, src)
     for k, v in pairs(src) do
         if dst[k] == nil then
-            _print_usage(dst)
             error("unsupported param: " .. k)
         end
     end
@@ -48,6 +43,9 @@ end
 local Env = torch.class('NES.NesEnv')
 function Env:__init(extraConfig)
     self.config = {
+        -- The ROM name being played
+        gamename='',
+
         -- Reward/penalty to give after dying
         gameOverReward=-10000,
 
@@ -57,7 +55,7 @@ function Env:__init(extraConfig)
     }
     updateDefaults(self.config, extraConfig)
 
-    require("NES.Games." .. GAME_NAME)
+    require("NES.Games." .. self.config.gamename)
     self.romEnv = NES.RomEnv()
 
     -- Highest frame rate while still keeping all of the frames
