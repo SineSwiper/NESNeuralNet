@@ -62,15 +62,17 @@ opt.agent_params.hist_len=4             -- Number of trailing frames to input in
 opt.agent_params.discount=0.99          -- Discount rate given to future rewards.
 
 -- VALIDATION AND EVALUATION
-opt.eval_freq=50000     -- Evaluate the model every eval_freq steps by calculating the score per episode for a few games. 250k for Atari.
-opt.eval_steps=10000    -- How many steps does an evaluation last? 125k for Atari.
-opt.prog_freq=50000     -- How often do you want a progress report?
+opt.eval_freq=50000       -- Evaluate the model every eval_freq steps by calculating the score per episode for a few games.
+opt.eval_steps=10000      -- How many steps does an evaluation last?
+opt.prog_freq=50000       -- How often do you want a progress report?
+opt.human_training=true   -- Play human training movies before learning with random steps?
 
 -- PERFORMANCE AND DEBUG OPTIONS
 opt.gpu=0            -- Zero means "use the GPU" which is a bit confusing... -1 for CPU.
 opt.threads=8        -- Number of BLAS threads
 opt.verbose=3        -- 2 is default. 3 turns on debugging messages about what the model is doing.
 opt.seed=1           -- Fixed input seed for repeatable experiments
+opt.best=1           -- Always load the best network
 
 -- SAVE OPTIONS
 opt.name=table.concat({opt.agent_type, opt.gamename, 'FULL_Y'}, "_")  -- Filename used for saving most things

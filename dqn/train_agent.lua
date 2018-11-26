@@ -36,16 +36,25 @@ local nrewards
 local nepisodes
 local episode_reward
 
+local heatmap
+
 -- Take one single initial step to get kicked-off...
 local screen, reward, terminal = game_env:getState()
 
 -- Start with full-on human training data
-local in_human_training = true
+local in_human_training = opt.human_training
 
-agent.training_actions = game_env:fillAllTrainingActions()
-game_env._actrep = 1
+if in_human_training then
+    game_env._actrep = 1
+    agent.training_actions = game_env:fillAllTrainingActions()
+end
 
 local human_training_actions = table.getn(agent.training_actions)
+
+-- Don't enable graphics if we don't have to
+if not opt.env_params.useRGB then
+    emu.setrenderplanes(false, false)
+end
 
 -- Main loop
 local last_step_log_time = sys.clock()
@@ -68,7 +77,6 @@ while step < opt.steps do
         end
     elseif table.getn(agent.training_actions) == 0 and torch.uniform() < 0.10 then
         agent.training_actions = game_env:fillTrainingActions()
-print('FILLED TRAIN', table.getn(agent.training_actions))
     end
 
     step = step + 1
@@ -81,8 +89,8 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
 
     -- game over? get next game!
     if not terminal then
-    
-        -- Play the selected action in the emulator. 
+
+        -- Play the selected action in the emulator.
         -- Record the resulting screen, reward, and whether this was terminal.
         screen, reward, terminal = game_env:step(action)
 
@@ -104,6 +112,14 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         if opt.verbose > 2 then
             print("New episode")
         end
+    end
+
+    -- Show heatmap
+    if opt.heatmap then
+        if step % agent.update_freq == 0 and agent.grad_input then
+            heatmap = agent:get_grad_input()
+        end
+        if heatmap then game_env.NesEnv:displayHeatmap(heatmap) end
     end
 
     -- Logging...

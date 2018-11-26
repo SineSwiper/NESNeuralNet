@@ -74,6 +74,7 @@ function nql:__init(args)
         local file_check, err_msg = lfs.attributes(self.network)
         if file_check then
             -- try to load saved agent
+            print("Loading: ", self.network)
             local err_msg, exp = pcall(torch.load, self.network)
             if not err_msg then
                 error("Could not find network file. Error: " .. exp)
@@ -295,7 +296,7 @@ function nql:qLearnMinibatch()
     self.dw:zero()
 
     -- Do a backwards pass to calculate the gradients.
-    self.network:backward(s, targets)
+    self.grad_input = self.network:backward(s, targets)
 
     -- add weight cost to gradient - this defaults to zero.
     self.dw:add(-self.wc, self.w)
@@ -319,6 +320,26 @@ function nql:qLearnMinibatch()
     -- accumulate update
     self.deltas:mul(0):addcdiv(self.lr, self.dw, self.tmp)
     self.w:add(self.deltas)
+end
+
+-- Returns a Tensor of input gradients
+function nql:get_grad_input()
+    if self.grad_input then
+        local size = {}
+        table.insert(size, self.minibatch_size)
+        for _, dim in ipairs(self.input_dims) do table.insert(size, dim) end
+        size = torch.LongStorage(size)
+
+        -- 4D -> 2D (MBSize x Frames x X x Y --> X x Y)
+        local gi     = self.grad_input:resize(size):float()
+        local avg, _ = gi:mean(1)
+        avg, _ = avg:mean(2)
+        avg = avg:squeeze()
+
+        return avg
+    end
+
+    return torch.FloatTensor({self.input_dims[2], self.input_dims[3]}):zeros()
 end
 
 -- Returns valid_size experiences as validation data.

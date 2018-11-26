@@ -73,6 +73,10 @@ function RomEnv:btnDisplayPos()
     return 0, 35
 end
 
+function RomEnv:heatmapDisplayPos()
+    return 256-84-1, 35
+end
+
 -- Returns the reward, based on what's in the RAM after the action.
 function RomEnv:reward()
     local reward = 0

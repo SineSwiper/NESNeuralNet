@@ -159,15 +159,64 @@ function Env:_displayButtons(btns)
     local xOff, yOff = self.romEnv:btnDisplayPos()
 
     for player, pBtns in pairs(btns) do
-        for _, btn in pairs(BUTTON_SET) do
+        for i, btn in pairs(BUTTON_SET) do
             local letter = BUTTON2FRAME[btn]
             local color = 'white'
             if pBtns[btn] == true then color = 'red' end
 
-            local x = _ * 7 + xOff
+            local x = i * 7 + xOff
             local y = (player-1) * 10 + yOff
 
             gui.text(x, y, letter, color, 'black')
+        end
+    end
+end
+
+function Env:displayHeatmap(heatmap)
+    local xOff, yOff = self.romEnv:heatmapDisplayPos()
+
+    local maxY = heatmap:size(1)
+    local maxX = heatmap:size(2)
+    local maxQ = math.max( heatmap:min() * -1, heatmap:max() )
+
+    for y=1,maxY do
+        -- Use a form of RLE compression to optimize the drawing
+        local prevColor, prevX
+
+        for x=1,maxX do
+            local q = heatmap[y][x]
+            local r,g,b,a = 0,0,0,255
+            if     q > 0 then
+                g = math.floor( q / maxQ * 255, 255)
+            elseif q < 0 then
+                r = math.floor(-q / maxQ * 255, 255)
+            end
+
+            -- faster to pass this than have FCEUX calculate a Lua table
+            local c = r * 16777216 + g * 65536 + r * 256 + a
+
+            -- Figure out if we have to draw or not
+            if not prevColor then
+                prevColor, prevX = c, x
+            elseif prevColor == c then
+                -- Do nothing; wait until it changes
+            else
+                -- Different color; we're drawing something...
+                if prevX == x - 1 then
+                    gui.pixel(prevX + xOff, y + yOff, prevColor)
+                else
+                    gui.line(prevX + xOff, y + yOff, x - 1 + xOff, y + yOff, prevColor)
+                end
+
+                prevColor, prevX = c, x
+            end
+        end
+
+        -- Draw the final line/pixel for this row
+        if prevX == maxX then
+            gui.pixel(prevX + xOff, y + yOff, prevColor)
+        else
+            gui.line(prevX + xOff, y + yOff, maxX + xOff, y + yOff, prevColor)
         end
     end
 end
