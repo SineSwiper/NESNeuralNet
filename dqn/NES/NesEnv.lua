@@ -284,12 +284,39 @@ function Env:fillTrainingCache()
 
     -- Read the movie files
     for _, full_path in ipairs(fm_files) do
+        local file = full_path:match("^.+/(.+)$")
         local skip_frames = self.romEnv:getNumSkipFrames()
 
+        print("Loading " .. file .. " into training cache")
         for line in io.lines(full_path) do
-            --- XXX: Need header sanity checks here
-            
-            if string.match(line, '^|%d+|.*|.*|.*|.*$') then
+            --- Header sanity checks
+            if line:match('^%w+ .+$') then
+                local key, val = line:match('^(%w+) (.+)$')
+
+                if     key == 'version' and val ~= '3' then
+                    print('    WARNING: Only a V' .. val .. ' (not V3) FCEUX movie file')
+                elseif key == 'romFilename' then
+                    -- Only do a loose check here, since filename flags may vary.
+                    -- Adjust as necessary...
+                    local mgamename = val:match("^[%w _-&'%.!]+"):gsub("[ '%.!]", '')
+                    if not mgamename:match(self.config.gamename) then
+                        print('    WARNING: ROM filenames are different: ' .. mgamename .. ' vs. ' .. self.config.gamename)
+                    end
+                elseif key == 'romChecksum' and val ~= rom.gethash('base64') then
+                    print('    WARNING: Movie checksum does not match loaded ROM')
+                elseif key == 'palFlag' and val ~= '0' then
+                    print('    WARNING: PAL flag enabled')
+
+                -- TODO: fourscore, port0/1/2 checks
+
+                elseif key == 'FDS' and val ~= '0' then
+                    print('    WARNING: Famicom Disk System movie file; may not work right...')
+                elseif key == 'NewPPU' and val ~= '0' then
+                    print('    WARNING: Moving using New PPU core; may not work right...')
+                end
+
+            -- Frame line
+            elseif line:match('^|%d+|.*|.*|.*|.*$') then
                 if skip_frames > 0 then
                     skip_frames = skip_frames - 1
                     -- Insert reset line
@@ -300,12 +327,12 @@ function Env:fillTrainingCache()
                 end
             end
         end
-
-        print("Loaded " .. full_path .. " into training cache")
     end
 end
 
 function Env:fillTrainingActions(actions, step, min, len)
+    if table.getn(self.trainingCache) == 0 then return end
+
     -- Random bits
     if not len then len = torch.random(1, 300) end  -- upwards of 5 seconds
     if not min then min = torch.random(table.getn(self.trainingCache) - len) end
