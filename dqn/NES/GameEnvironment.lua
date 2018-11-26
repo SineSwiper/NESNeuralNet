@@ -41,7 +41,7 @@ function gameEnv:reset(_env, _params)
 end
 
 -- Function plays `action` in the game and return game state.
-function gameEnv:step(action, training)
+function gameEnv:step(action)
     -- Convert ByteTensor to table
     if torch.isTensor(action) then
         action = action:totable()
@@ -69,8 +69,11 @@ end
 -- Reset the game from the beginning.
 function gameEnv:newGame()
     -- Start off with observations, but no actions or reward
-    local data = self.NesEnv:envStart()
+    local data = self.NesEnv:envStart(self.nextMovieFile)
     data = data[1]
+
+    -- Movie started; clear out the filename
+    self.nextMovieFile = nil
 
     return self:_updateState(data, 0, false):getState()
 end
@@ -101,3 +104,6 @@ function gameEnv:fillAllTrainingActions()
     return training_actions
 end
 
+function gameEnv:shouldRecordMovie(filename)
+    self.nextMovieFile = filename
+end

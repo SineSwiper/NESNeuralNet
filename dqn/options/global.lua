@@ -3,6 +3,9 @@
 require 'table'
 require 'lfs'
 
+-- The global ROOT_PATH
+ROOT_PATH = '..'  -- Root path for all other paths (networks, movies, etc.)
+
 local opt = {}
 opt.pool_frms    = {}
 opt.env_params   = {}
@@ -29,7 +32,6 @@ opt.initial_priority="false"
 -- AGENT OPTIONS
 opt.agent="NeuralQLearner"  -- Name of agent file to use
 opt.agent_type="DQN3_0_1"
-opt.name=table.concat({opt.agent_type, opt.gamename, 'FULL_Y'}, "_")  -- Filename used for saving network and training history
 
 opt.agent_params.ep=1               -- The probability of choosing a random/human action rather than the best predicted action.
 opt.agent_params.ep_end=0.01        -- What epsilon ends up as going forward.
@@ -71,9 +73,12 @@ opt.verbose=3        -- 2 is default. 3 turns on debugging messages about what t
 opt.seed=1           -- Fixed input seed for repeatable experiments
 
 -- SAVE OPTIONS
-opt.network='../networks/' .. opt.name .. '.t7'
+opt.name=table.concat({opt.agent_type, opt.gamename, 'FULL_Y'}, "_")  -- Filename used for saving most things
 opt.saveNetworkParams=true  -- Saves the agent network in a separate file
 opt.save_versions=0         -- Append floor(step / opt.save_versions) to the filename
 opt.save_freq=50000         -- Save every save_freq steps. Save early and often!
+
+-- MOVIE OPTIONS
+opt.example_mp=0.01         -- The probability of recording a random movie in the examples subdir
 
 globalDQNOptions = opt

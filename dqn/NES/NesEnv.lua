@@ -75,9 +75,25 @@ function Env:__init(extraConfig)
 end
 
 -- Returns a list of observations.
-function Env:envStart()
-    self:resetGame()
+function Env:envStart(movie_filename)
+    self:resetGame(movie_filename)
     return self:_generateObservations()
+end
+
+function Env:resetGame(movie_filename)
+    -- If recording a movie, stop here
+    if movie.active() then movie.stop() end
+
+    if movie_filename then
+        -- This will powercycle the NES for us
+        local file = movie_filename:match("^.+/(.+)$")
+        print("Recording " .. file)
+        movie.record(movie_filename, 0, 'NES Neural Net AI')
+    else
+        emu.poweron()
+    end
+
+    self.romEnv:skipStartScreen()
 end
 
 -- Does the specified actions and returns the (reward, observations) pair.
@@ -86,7 +102,6 @@ function Env:envStep(action)
     assert(type(action) == 'table', 'action needs to be a table')
 
     if self.romEnv:isGameOver() then
-        self:resetGame()
         -- The first screen of the game will be also
         -- provided as the observation.
         return self:_generateObservations(), self.config.gameOverReward, true  -- true = terminal
@@ -206,8 +221,7 @@ function Env:_generateObservations()
 end
 
 function Env:fillTrainingCache()
-    -- XXX: Hard-coded directory here...
-    local dir = '../movies/training'
+    local dir = table.concat({ROOT_PATH, 'movies', 'training', self.config.gamename}, "/")
 
     -- Find movie files to use and sort them
     local fm_files = {}
@@ -293,9 +307,4 @@ function Env:fillTrainingActions(actions, step, min, len)
             i = i + step
         end
     end
-end
-
-function Env:resetGame()
-    emu.poweron()
-    self.romEnv:skipStartScreen()
 end

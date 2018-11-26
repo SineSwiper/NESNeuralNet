@@ -6,6 +6,9 @@ end
 
 local opt = globalDQNOptions
 
+-- TODO: Change other code to use ROOT_PATH more
+opt.network = table.concat({ROOT_PATH, 'networks', opt.name .. '.t7'}, "/")
+
 --- General setup.
 local game_env, agent, opt = setup(opt)
 
@@ -81,15 +84,22 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
     
         -- Play the selected action in the emulator. 
         -- Record the resulting screen, reward, and whether this was terminal.
-        screen, reward, terminal = game_env:step(action, true)
-            
+        screen, reward, terminal = game_env:step(action)
+
         -- Spam the console.
         if opt.verbose > 3 and reward ~= 0 then
             print("Reward: " .. reward)
         end
     else
+        -- Should we record an example movie?
+        if torch.uniform() < opt.example_mp and not in_human_training then
+            local basename = opt.name .. '-s=' .. step .. '.fm2'
+            local filename = table.concat({ROOT_PATH, 'movies', 'examples', basename}, "/")
+            game_env:shouldRecordMovie(filename)
+        end
+
         screen, reward, terminal = game_env:newGame()
-        
+
         -- Spam the console.
         if opt.verbose > 2 then
             print("New episode")
@@ -109,7 +119,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         print("Steps: ", step)
         print("Epsilon: ", agent.ep)
         agent:report()
-        
+
         -- Save the hist_len most recent frames.
         if opt.verbose > 3 then
             agent:printRecent()
@@ -120,7 +130,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
     if step%1000 == 0 then collectgarbage() end
 
     if not in_human_training and step % opt.eval_freq == 0 and step > learn_start then
-    
+
         print("***********")
         print("Starting evaluation!")
         print("***********")
@@ -170,8 +180,24 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         local ind = #reward_history+1
         total_reward = total_reward/math.max(1, nepisodes)
 
-        if #reward_history == 0 or total_reward > torch.Tensor(reward_history):max() then
-            agent.best_network = agent.network:clone()
+        local reward_max = torch.Tensor(reward_history):max()
+        if #reward_history == 0 or total_reward > reward_max then
+            if opt.verbose > 2 then
+                print("Found a better network: " .. total_reward .. " vs. " .. reward_max)
+            end
+
+            -- Be very careful to not clone a large CUDA object
+            agent.best_network = agent.network:float():clone()
+            if self.gpu and self.gpu >= 0 then
+                agent.network:cuda()
+            end
+
+            -- If it's that good, then record it!
+            if not in_human_training then
+                local basename = opt.name .. '-r=' .. total_reward .. '.fm2'
+                local filename = table.concat({ROOT_PATH, 'movies', 'best', basename}, "/")
+                game_env:shouldRecordMovie(filename)
+            end
         end
 
         if agent.v_avg then
@@ -217,10 +243,11 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
             filename = filename .. "_" .. math.floor(step / opt.save_versions)
         end
 
-        -- XXX: Hard-coded directory
-        filename = '../networks/' .. filename
-        torch.save(filename .. ".t7", {
-            agent          = agent,
+        filename = table.concat({ROOT_PATH, 'networks', filename}, "/")
+        torch.save(filename .. '.t7', {
+            -- XXX: None of this is used except model/best_model, anyway
+            --agent          = agent,
+
             model          = agent.network,
             best_model     = agent.best_network,
             reward_history = reward_history,
@@ -243,7 +270,7 @@ print('FILLED TRAIN', table.getn(agent.training_actions))
         agent.w, agent.dw, agent.g, agent.g2, agent.delta, agent.delta2,
             agent.deltas, agent.tmp = w, dw, g, g2, delta, delta2, deltas, tmp
 
-        print("***********")    
+        print("***********")
         print('Saved:', filename .. '.t7')
         print("***********")
         io.flush()
