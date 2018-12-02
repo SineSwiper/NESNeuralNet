@@ -1,3 +1,7 @@
+-- Useful for tracking overall load time on step 1
+require "sys"
+local last_step_log_time = sys.clock()
+
 require "options.train"
 
 if not dqn then
@@ -38,6 +42,12 @@ local episode_reward
 
 local heatmap
 
+-- Used for %X trickery
+local time_offset     = os.date('%z', 0)
+local time_offset_sec =
+    math.floor(time_offset / 100) * 3600 +                               -- hour
+    (time_offset:sub(-2) * 60 * tonumber(time_offset:sub(1, 1) .. "1"))  -- min * sign
+
 -- Take one single initial step to get kicked-off...
 local screen, reward, terminal = game_env:getState()
 
@@ -57,7 +67,6 @@ if not opt.env_params.useRGB then
 end
 
 -- Main loop
-local last_step_log_time = sys.clock()
 while step < opt.steps do
     -- Human training
     if in_human_training then
@@ -123,10 +132,22 @@ while step < opt.steps do
     end
 
     -- Logging...
-    if step % 10000 == 0 then
-        local elapsed_step_time = sys.clock() - last_step_log_time
+    if step == 1 or step % 10000 == 0 then
+        local elapsed_step_time = os.difftime(sys.clock(), last_step_log_time)
         last_step_log_time = sys.clock()
-        print("Steps: " .. step .. " Time: " .. elapsed_step_time)
+        local elapsed_step_time_str = os.date("%X", elapsed_step_time + 86400 - time_offset_sec)
+
+        local log_str = "Steps: " .. step .. ", Time: " .. elapsed_step_time_str
+
+        if opt.gpu and opt.gpu >= 0 then
+            local freeVRAM, totalVRAM = cutorch.getMemoryUsage(opt.gpu)
+            local usedVRAM   = totalVRAM - freeVRAM
+            local perVRAM    = math.floor(usedVRAM / totalVRAM * 1000 + 0.5) / 10
+            local usedVRAMGB = math.floor(usedVRAM / 1024^3 * 10 + 0.5) / 10
+
+            log_str = log_str .. ", VRAM: " .. usedVRAMGB .. "GiB (" .. perVRAM .. "%)"
+        end
+        print(log_str)
     end
 
     if step % opt.prog_freq == 0 then
@@ -190,7 +211,7 @@ while step < opt.steps do
             end
         end
 
-        eval_time = sys.clock() - eval_time
+        eval_time  = os.difftime(sys.clock(), eval_time)
         start_time = start_time + eval_time
         agent:compute_validation_statistics()
         local ind = #reward_history+1
@@ -204,7 +225,8 @@ while step < opt.steps do
 
             -- Be very careful to not clone a large CUDA object
             agent.best_network = agent.network:float():clone()
-            if self.gpu and self.gpu >= 0 then
+            collectgarbage()
+            if opt.gpu and opt.gpu >= 0 then
                 agent.network:cuda()
             end
 
@@ -244,16 +266,6 @@ while step < opt.steps do
     end
 
     if step % opt.save_freq == 0 or step == opt.steps then
-        -- Don't store these values; restore them back after the save
-        local s, a, r, s2, term = agent.valid_s, agent.valid_a, agent.valid_r,
-            agent.valid_s2, agent.valid_term
-        agent.valid_s, agent.valid_a, agent.valid_r, agent.valid_s2,
-            agent.valid_term = nil, nil, nil, nil, nil, nil, nil
-        local w, dw, g, g2, delta, delta2, deltas, tmp = agent.w, agent.dw,
-            agent.g, agent.g2, agent.delta, agent.delta2, agent.deltas, agent.tmp
-        agent.w, agent.dw, agent.g, agent.g2, agent.delta, agent.delta2,
-            agent.deltas, agent.tmp = nil, nil, nil, nil, nil, nil, nil, nil
-
         local filename = opt.name
         if opt.save_versions > 0 then
             filename = filename .. "_" .. math.floor(step / opt.save_versions)
@@ -261,9 +273,6 @@ while step < opt.steps do
 
         filename = table.concat({ROOT_PATH, 'networks', filename}, "/")
         torch.save(filename .. '.t7', {
-            -- XXX: None of this is used except model/best_model, anyway
-            --agent          = agent,
-
             model          = agent.network,
             best_model     = agent.best_network,
             reward_history = reward_history,
@@ -276,15 +285,9 @@ while step < opt.steps do
             arguments      = opt
         })
         if opt.saveNetworkParams then
-            local nets = {network=w:clone():float()}
+            local nets = {network=agent.w:clone():float()}
             torch.save(filename..'.params.t7', nets, 'ascii')
         end
-
-        -- Putting the values back
-        agent.valid_s, agent.valid_a, agent.valid_r, agent.valid_s2,
-            agent.valid_term = s, a, r, s2, term
-        agent.w, agent.dw, agent.g, agent.g2, agent.delta, agent.delta2,
-            agent.deltas, agent.tmp = w, dw, g, g2, delta, delta2, deltas, tmp
 
         print("***********")
         print('Saved:', filename .. '.t7')

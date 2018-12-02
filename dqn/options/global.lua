@@ -40,25 +40,27 @@ opt.agent_params.ep_human=0.90      -- The probability (after EP is hit) that th
 opt.agent_params.max_reward=10000   -- Rewards are clipped to this value.
 opt.agent_params.min_reward=-10000  -- Ditto.
 opt.agent_params.rescale_r=1        -- Rescale rewards to [-1, 1]
-opt.agent_params.bufferSize=1024
-opt.agent_params.valid_size=1000
 
 opt.actrep=8            -- Number of times an action is repeated
 
 -- LEARNING OPTIONS
-opt.agent_params.lr=0.00025               -- Learning rate
-opt.agent_params.learn_start=2000         -- Only start learning after this many steps. Should be bigger than bufferSize.
-opt.agent_params.replay_memory=1000000    -- Set small to speed up debugging.  Big memory object!
-opt.agent_params.n_replay=4               -- Minibatches to learn from each learning step.
-opt.agent_params.nonEventProb=nil         -- Probability of selecting a non-reward-bearing experience.
-opt.agent_params.clip_delta=1             -- Limit the delta to +/- 1.
-opt.agent_params.minibatch_size=32
+opt.agent_params.lr=0.00025             -- Learning rate
+opt.agent_params.bufferSize=3500        -- Size of the experience buffer
+opt.agent_params.valid_size=1000        -- Size used for validation
+opt.agent_params.learn_start=3500       -- Only start learning after this many steps. Should be bigger than bufferSize.
+opt.agent_params.replay_memory=500000   -- Set small to speed up debugging.  Big memory object!
+opt.agent_params.nonEventProb=nil       -- Probability of selecting a non-reward-bearing experience.
+opt.agent_params.clip_delta=1           -- Limit the delta to +/- 1.
+
+-- MINIBATCH OPTIONS
+opt.agent_params.minibatch_size=3500    -- Size of each minibatch
+opt.agent_params.n_replay=1             -- Minibatches to learn from each learning step.
+opt.agent_params.update_freq=500        -- How often do we update the Q network?
 
 -- Q NETWORK OPTIONS
 opt.agent_params.network="convnet_nes"  -- Reload pretrained network
-opt.agent_params.target_q=30000         -- Steps to replace target nework with the updated one. Atari: 10k. DoubleDQN: 30k
-opt.agent_params.update_freq=4          -- How often do we update the Q network?
-opt.agent_params.hist_len=4             -- Number of trailing frames to input into the Q network. 4 for Atari...
+opt.agent_params.target_q=30000         -- Steps to replace target network with the updated one.
+opt.agent_params.hist_len=4             -- Number of trailing frames to input into the Q network.
 opt.agent_params.discount=0.99          -- Discount rate given to future rewards.
 
 -- VALIDATION AND EVALUATION
@@ -69,7 +71,7 @@ opt.human_training=true   -- Play human training movies before learning with ran
 
 -- PERFORMANCE AND DEBUG OPTIONS
 opt.gpu=0            -- Zero means "use the GPU" which is a bit confusing... -1 for CPU.
-opt.threads=8        -- Number of BLAS threads
+opt.threads=16       -- Number of BLAS threads
 opt.verbose=3        -- 2 is default. 3 turns on debugging messages about what the model is doing.
 opt.seed=1           -- Fixed input seed for repeatable experiments
 opt.best=1           -- Always load the best network

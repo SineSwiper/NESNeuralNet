@@ -76,6 +76,7 @@ function nql:__init(args)
             -- try to load saved agent
             print("Loading: ", self.network)
             local err_msg, exp = pcall(torch.load, self.network)
+
             if not err_msg then
                 error("Could not find network file. Error: " .. exp)
             end
@@ -86,6 +87,9 @@ function nql:__init(args)
                 print("Loading the latest (not necessarily the best) model...")
                 self.network = exp.model
             end
+
+            if self.verbose >= 2 then print(self.network) end
+
         else
             error("Network file not available: " .. err_msg)
         end
@@ -434,6 +438,9 @@ function nql:perceive(reward, rawstate, terminal, testing, testing_ep)
 
     -- After target_q steps, replace the existing Q network with the newer one.
     if self.target_q and self.numSteps % self.target_q == 1 then
+        -- If we're going to replace the large CUDA network, clean it out first
+        self.target_network = nil
+        collectgarbage()
         self.target_network = self.network:clone()
     end
 
