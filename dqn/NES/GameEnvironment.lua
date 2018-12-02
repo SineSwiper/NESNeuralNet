@@ -55,6 +55,8 @@ function gameEnv:step(action)
         data, reward, terminal = self.NesEnv:envStep(action)
         data = data[1]  -- pixels, will get to RAM later on...
 
+        if self.heatmap then self.NesEnv:displayHeatmap(self.heatmap, self.heatmap_level) end
+
         -- accumulate instantaneous reward
         cumulated_reward = cumulated_reward + reward
 

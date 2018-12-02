@@ -89,6 +89,14 @@ while step < opt.steps do
         agent.training_actions = game_env:fillTrainingActions()
     end
 
+    -- Show heatmap
+    if opt.heatmap and agent.initial_output then
+        local level = math.floor(sys.clock() / 5) % (agent.network:size()-1) + 1
+        agent.output_vision    = level
+        game_env.heatmap_level = level
+        game_env.heatmap = agent.initial_output
+    end
+
     step = step + 1
     local action
     if in_human_training then
@@ -122,14 +130,6 @@ while step < opt.steps do
         if opt.verbose > 2 then
             print("New episode")
         end
-    end
-
-    -- Show heatmap
-    if opt.heatmap then
-        if step % agent.update_freq == 0 and agent.grad_input then
-            heatmap = agent:get_grad_input()
-        end
-        if heatmap then game_env.NesEnv:displayHeatmap(heatmap) end
     end
 
     -- Logging...

@@ -55,6 +55,8 @@ function nql:__init(args)
     self.nonEventProb   = args.nonEventProb
     self.bufferSize     = args.bufferSize or 512
 
+    self.output_vision  = args.output_vision or 1
+
     self.transition_params = args.transition_params or {}
 
     self.training_actions = {}
@@ -300,7 +302,7 @@ function nql:qLearnMinibatch()
     self.dw:zero()
 
     -- Do a backwards pass to calculate the gradients.
-    self.grad_input = self.network:backward(s, targets)
+    self.network:backward(s, targets)
 
     -- add weight cost to gradient - this defaults to zero.
     self.dw:add(-self.wc, self.w)
@@ -509,6 +511,9 @@ function nql:dipSwitchMatch(state)
     for i = 1, self.n_actions do
         if q[i][2] > q[i][1] then btns[i] = 1 end
     end
+
+    -- Mark initial output for heatmaps
+    self.initial_output = self.network:get(self.output_vision).output
 
     return btns
 end
