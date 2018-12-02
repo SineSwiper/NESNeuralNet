@@ -4,6 +4,8 @@ require "options.global"
 local opt = globalDQNOptions
 
 -- TEST-SPECIFIC OPTIONS
+opt.testing = true
+opt.testing_ep = 0
 opt.heatmap = true
 opt.human_training = false
 opt.replay_memory=100             -- This doesn't matter for testing...

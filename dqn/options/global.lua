@@ -83,6 +83,6 @@ opt.save_versions=0         -- Append floor(step / opt.save_versions) to the fil
 opt.save_freq=50000         -- Save every save_freq steps. Save early and often!
 
 -- MOVIE OPTIONS
-opt.example_mp=0.01         -- The probability of recording a random movie in the examples subdir
+opt.example_mp=0.001        -- The probability of recording a random movie in the examples subdir
 
 globalDQNOptions = opt

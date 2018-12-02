@@ -3,6 +3,7 @@ require "sys"
 local last_step_log_time = sys.clock()
 
 require "options.train"
+--require "options.test"
 
 if not dqn then
     require "initenv"
@@ -13,7 +14,7 @@ local opt = globalDQNOptions
 -- TODO: Change other code to use ROOT_PATH more
 opt.network = table.concat({ROOT_PATH, 'networks', opt.name .. '.t7'}, "/")
 
---- General setup.
+-- General setup.
 local game_env, agent, opt = setup(opt)
 
 -- override print to always flush the output
@@ -93,7 +94,7 @@ while step < opt.steps do
     if in_human_training then
         action = agent:perceive(reward, screen, terminal, false, 2)  -- 2 = human training
     else
-        action = agent:perceive(reward, screen, terminal)
+        action = agent:perceive(reward, screen, terminal, opt.testing, opt.testing_ep)
     end
 
     -- game over? get next game!
@@ -110,7 +111,7 @@ while step < opt.steps do
     else
         -- Should we record an example movie?
         if torch.uniform() < opt.example_mp and not in_human_training then
-            local basename = opt.name .. '-s=' .. step .. '.fm2'
+            local basename = opt.name .. '_s' .. step .. '.fm2'
             local filename = table.concat({ROOT_PATH, 'movies', 'examples', basename}, "/")
             game_env:shouldRecordMovie(filename)
         end
@@ -217,10 +218,14 @@ while step < opt.steps do
         local ind = #reward_history+1
         total_reward = total_reward/math.max(1, nepisodes)
 
-        local reward_max = torch.Tensor(reward_history):max()
-        if #reward_history == 0 or total_reward > reward_max then
+        -- #reward_history ? torch.Tensor(...) : 0, but this is Lua...
+        local reward_max = 0
+        if #reward_history > 0 then reward_max = torch.Tensor(reward_history):max() end
+
+        if total_reward > reward_max then
+            local total_reward_int = math.floor(total_reward + 0.5)
             if opt.verbose > 2 then
-                print("Found a better network: " .. total_reward .. " vs. " .. reward_max)
+                print( "Found a better network: " .. total_reward_int .. " vs. " .. math.floor(reward_max + 0.5) )
             end
 
             -- Be very careful to not clone a large CUDA object
@@ -232,7 +237,7 @@ while step < opt.steps do
 
             -- If it's that good, then record it!
             if not in_human_training then
-                local basename = opt.name .. '-r=' .. total_reward .. '.fm2'
+                local basename = opt.name .. '_r' .. total_reward_int .. '.fm2'
                 local filename = table.concat({ROOT_PATH, 'movies', 'best', basename}, "/")
                 game_env:shouldRecordMovie(filename)
             end
@@ -253,7 +258,6 @@ while step < opt.steps do
 
         local time_dif = time_history[ind+1] - time_history[ind]
 
-        -- FIXME
         local training_rate = game_env._actrep*opt.eval_freq / time_dif
 
         print(string.format(
