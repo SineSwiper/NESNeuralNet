@@ -64,6 +64,8 @@ function Env:resetGame(movie_filename)
     -- If recording a movie, stop here
     if movie.active() then movie.stop() end
 
+    self:clearAllStates()
+
     if movie_filename then
         -- This will powercycle the NES for us
         local file = movie_filename:match("^.+/(.+)$")
@@ -81,17 +83,31 @@ function Env:envStep(action)
     assert(action, 'action is required')
     assert(type(action) == 'table', 'action needs to be a table')
 
+    -- Handle adrenaline and save states
+    local adrenaline = self:checkDeathSpiral()
+
+    -- What are we doing with the save states?
+    local terminal = false
     if self.romEnv:isGameOver() then
-        -- The first screen of the game will be also
-        -- provided as the observation.
-        return self:_generateObservations(), self.config.gameOverReward, true  -- true = terminal
+        terminal = self:loadState()
+    else
+        self:saveState()
+    end
+
+    -- Rare, but we might have ran out of save states...
+    if terminal then
+        -- Go back to the latest frame state, just for movie playback
+        self:reloadFirstState()
+
+        -- The first screen of the game will be also provided as the observation.
+        return self:_generateObservations(), self.config.gameOverReward, terminal
     end
 
     local btns = self:_action2btn(action)
     self:act(btns)
     self:displayButtons(btns)
 
-    local reward = self.romEnv:reward()
+    local reward = self.romEnv:reward() + adrenaline
     return self:_generateObservations(), reward, false
 end
 

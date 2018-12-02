@@ -31,6 +31,7 @@ function RomEnv:getNumSkipFrames()
 end
 
 function RomEnv:getCurrentScore()
+    -- [0x07DD-0x07E2] Mario score in BCD format
     local score = 0
 
     score = score + memory.readbyteunsigned(0x07dd) * 1000000
@@ -79,7 +80,8 @@ end
 
 -- Returns the reward, based on what's in the RAM after the action.
 function RomEnv:reward()
-    local reward = 0
+    -- Sitting still is not a good look, so the default score is negative
+    local reward = -10
 
     -- [0x0057] Player horizontal speed
     local x_speed = memory.readbytesigned(0x0057)
@@ -95,4 +97,19 @@ function RomEnv:reward()
     self.prevVals['score'] = new_score
 
     return reward
+end
+
+function RomEnv:deathSpiralStartFrameDelta()
+    -- [0x07F8/A] Game Timer in BCD Format
+    local timer = 0
+    timer = timer + memory.readbytesigned(0x07f8) * 100
+    timer = timer + memory.readbytesigned(0x07f9) *  10
+    timer = timer + memory.readbytesigned(0x07fa) *   1
+
+    if timer < 10 then
+        -- Taking too long: We demand perfection, so start the whole level over again
+        return (400 - timer) * 24  -- 400s timer * frames/sec
+    end
+
+    return 1
 end

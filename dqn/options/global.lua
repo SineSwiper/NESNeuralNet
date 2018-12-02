@@ -31,7 +31,7 @@ opt.initial_priority="false"
 
 -- AGENT OPTIONS
 opt.agent="NeuralQLearner"  -- Name of agent file to use
-opt.agent_type="DQN3_0_1"
+opt.agent_type="DQN3_0_3"
 
 opt.agent_params.ep=1               -- The probability of choosing a random/human action rather than the best predicted action.
 opt.agent_params.ep_end=0.01        -- What epsilon ends up as going forward.
